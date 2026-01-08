@@ -256,11 +256,31 @@ The Uiua GitHub organization hosts an example module at [https://github.com/uiua
 Upscale 3 [1_2 3_4]
 ```
 
+### Branch and Commit Specifiers
+
+Both the website and native interpreter support specifying a Git branch or commit hash when importing modules from GitHub. This is useful when you need to use a specific version or branch of a module.
+
+To specify a branch, add `branch: <branch-name>` after the URL:
+
+```uiua
+~ "git: github.com/user/repo branch: develop" ~ SomeFunction
+```
+
+To specify a commit hash, use `commit: <commit-hash>`:
+
+```uiua
+~ "git: github.com/user/repo commit: abc123def456" ~ SomeFunction
+```
+
+If no branch or commit is specified, the `main` branch is used by default.
+
+**Note:** Branch and commit specifiers are currently supported for GitHub repositories only.
+
+### Website vs Native Interpreter
+
 On the site, code is pulled from a `lib.ua` file at the root of the repository. Loading other files on the site is not supported.
 
 To use Git modules in the [native interpreter](/docs/install), you must have Git installed. The repository is cloned and the `lib.ua` file is loaded as the module's contents. Code from other files can be made available by importing them as modules in the `lib.ua` file.
-
-The native interpreter also supports adding an additional `branch: <branch-name>` or `commit: <commit-hash>` specifier after the URL.
 
 The `uiua module` command can be used to list or update Git modules.
 
