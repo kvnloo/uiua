@@ -604,7 +604,6 @@ pub fn gen_code_view(id: &str, code: &str, hidden: &str) -> View {
                 "unkeep: Deduplicate adjacent rows and get the duplicate counts",
             ),
             ((Un, By), "unby: Set a property given by a function"),
-            ((Un, Cos), "uncosine: Get the arccosine of a number"),
             ((Un, Exp), "unexponential: Get the natural logarithm of a number"),
             ((Un, Take), "untake: Restore an array with trailing elements"),
             (
