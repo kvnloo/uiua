@@ -463,15 +463,12 @@ impl SysBackend for WebBackend {
             return Err("Waiting for module, try running again in a moment...".into());
         }
 
-        match target {
-            GitTarget::Default => {}
-            GitTarget::Branch(_) => {
-                return Err("Git branch specification is not supported in the web backend".into());
-            }
-            GitTarget::Commit(_) => {
-                return Err("Git commit specification is not supported in the web backend".into());
-            }
-        }
+        let git_ref = match target {
+            GitTarget::Default => "main".to_string(),
+            GitTarget::Branch(branch) => branch,
+            GitTarget::Commit(commit) => commit,
+        };
+
         let (repo_owner, repo_name, path) = {
             let mut parts = original_url.rsplitn(3, '/');
             let repo_name = parts.next().ok_or("Invalid git url")?;
@@ -495,7 +492,7 @@ impl SysBackend for WebBackend {
             .replace("src/branch/master", "raw/branch/master");
 
         if !url.ends_with(".ua") {
-            url = format!("{url}/main/lib.ua");
+            url = format!("{url}/{git_ref}/lib.ua");
         }
 
         let res = CACHE.with(|cache| {
@@ -510,7 +507,7 @@ impl SysBackend for WebBackend {
                 spawn_local(async move {
                     let tree_res = fetch(&format!(
                         "https://api.github.com\
-                        /repos/{repo_owner}/{repo_name}/git/trees/main?recursive=1",
+                        /repos/{repo_owner}/{repo_name}/git/trees/{git_ref}?recursive=1",
                     ))
                     .await;
 
@@ -545,10 +542,11 @@ impl SysBackend for WebBackend {
                             let results = join_all(paths.iter().map(|path| {
                                 let repo_owner = repo_owner.clone();
                                 let repo_name = repo_name.clone();
+                                let git_ref = git_ref.clone();
                                 async move {
                                     let fetch_url = format!(
                                         "https://raw.githubusercontent.com\
-                                        /{repo_owner}/{repo_name}/main/{path}",
+                                        /{repo_owner}/{repo_name}/{git_ref}/{path}",
                                     );
                                     let internal_path = Path::new("uiua-modules")
                                         .join(repo_owner)
