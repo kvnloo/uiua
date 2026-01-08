@@ -488,8 +488,7 @@ impl SysBackend for WebBackend {
         let mut url = original_url
             .trim_end_matches('/')
             .replace("www.", "")
-            .replace("github.com", "raw.githubusercontent.com")
-            .replace("src/branch/master", "raw/branch/master");
+            .replace("github.com", "raw.githubusercontent.com");
 
         if !url.ends_with(".ua") {
             url = format!("{url}/{git_ref}/lib.ua");
