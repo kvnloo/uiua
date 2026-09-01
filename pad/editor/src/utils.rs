@@ -607,6 +607,21 @@ pub fn gen_code_view(code: &str, hidden: &str) -> View {
                 "unkeep: Deduplicate adjacent rows and get the duplicate counts",
             ),
             ((Un, By), "unby: Set a property given by a function"),
+            ((Un, Exp), "unexponential: Get the natural logarithm of a number"),
+            ((Un, Take), "untake: Restore an array with trailing elements"),
+            (
+                (Un, Graphemes),
+                "ungraphemes: Join graphemes back into a string",
+            ),
+            ((Un, Map), "unmap: Get the keys of a map"),
+            ((Un, Json), "unjson: Parse JSON into an array"),
+            ((Un, Xlsx), "unxlsx: Parse an Excel file into an array"),
+            ((Un, Hsv), "unhsv: Convert HSV color to RGB"),
+            ((Un, Fft), "unfft: Inverse Fast Fourier Transform"),
+            (
+                (Un, DateTime),
+                "undatetime: Parse datetime into components",
+            ),
             ((Anti, Drop), "antidrop: Pad an array"),
             ((Anti, Pow), "antipower: Get the nth root of a number"),
             (
