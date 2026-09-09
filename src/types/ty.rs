@@ -42,9 +42,10 @@ impl Type {
                     scalar = Scalar::Box(ScalarBox::All(scalar.scalar_type().into()));
                 }
                 scalar.scalar_type()
-            } else if let Some(dims) = (rest.iter())
-                .map(|Boxed(val)| value_as_dim(val))
-                .collect::<Option<Vec<_>>>()
+            } else if val.meta.label.is_none()
+                && let Some(dims) = (rest.iter())
+                    .map(|Boxed(val)| value_as_dim(val))
+                    .collect::<Option<Vec<_>>>()
             {
                 scalar.shaped(dims)
             } else {
