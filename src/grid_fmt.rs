@@ -31,6 +31,7 @@ pub struct GridFmtParams {
     pub(crate) max_boxed_rank: usize,
     pub(crate) max_boxed_len: usize,
     pub(crate) soa_row: bool,
+    pub(crate) multiline: bool,
 }
 
 pub trait GridFmt: Sized {
@@ -560,12 +561,23 @@ impl GridFmt for Value {
             Value::Char(c) => c.fmt_grid(params),
             #[cfg(feature = "ga")]
             Value::Mv(m) => m.fmt_grid(params),
-            Value::Box(v) => {
-                let max_boxed_rank = v.data.iter().map(|Boxed(v)| v.rank()).max().unwrap_or(0);
-                v.fmt_grid(GridFmtParams {
+            Value::Box(arr) => {
+                fn val_is_multiline(val: &Value) -> bool {
+                    if val.rank() > 1 {
+                        return true;
+                    }
+                    match val {
+                        Value::Box(arr) => (arr.data.iter())
+                            .any(|Boxed(v)| v.meta.label.is_some() || val_is_multiline(v)),
+                        _ => false,
+                    }
+                }
+                let max_boxed_rank = arr.data.iter().map(|Boxed(v)| v.rank()).max().unwrap_or(0);
+                arr.fmt_grid(GridFmtParams {
                     depth: params.depth + 1,
                     max_boxed_rank,
-                    max_boxed_len: (v.data.iter())
+                    multiline: val_is_multiline(self),
+                    max_boxed_len: (arr.data.iter())
                         .filter(|Boxed(v)| v.rank() == max_boxed_rank)
                         .map(|Boxed(v)| v.row_count())
                         .max()
@@ -706,9 +718,9 @@ impl GridFmt for Boxed {
         //     params.parent_rank,
         //     matches!(self.0, Value::Box(_))
         // );
-        if params.parent_rank == 0
-            || self.0.shape.is_empty()
-                && !(params.parent_rank == 1 && matches!(self.0, Value::Box(_) | Value::Char(_)))
+        if (params.soa_row || params.multiline || params.parent_rank == 0)
+            && (params.parent_rank == 0
+                || self.0.shape.is_empty() && !(matches!(self.0, Value::Box(_) | Value::Char(_))))
         {
             let symbol = if params.parent_rank == 0 {
                 Primitive::Box.glyph().unwrap()
@@ -804,6 +816,9 @@ impl GridFmt for Boxed {
             return None;
         }
         Some(rows)
+    }
+    fn grid_fmt_delims() -> (char, char) {
+        ('{', '}')
     }
 }
 
@@ -1036,12 +1051,18 @@ impl<T: GridFmt + ArrayValue> GridFmt for Array<T> {
                             && (j + 1 < metagrid_width
                                 || self.shape[self.rank() - 1 - horiz * 2] == 1)
                         {
-                            for mut line in Line::set(horiz) {
-                                if j + 1 == metagrid_width {
-                                    line = line.singleton();
+                            if !is_soa && self.rank() == 1 && row_height == 1 && !params.multiline {
+                                if self.row_count() > 1 {
+                                    subrow.push(' ');
                                 }
-                                div_pos.insert(subrow.len(), *line);
-                                subrow.push(line.vert());
+                            } else {
+                                for mut line in Line::set(horiz) {
+                                    if j + 1 == metagrid_width {
+                                        line = line.singleton();
+                                    }
+                                    div_pos.insert(subrow.len(), *line);
+                                    subrow.push(line.vert());
+                                }
                             }
                         }
                     }
@@ -1080,12 +1101,13 @@ impl<T: GridFmt + ArrayValue> GridFmt for Array<T> {
                 // Don't surround maplings
             } else if !params.soa_row
                 && (params.parent_rank == 0
+                    || self.rank() <= 1 && params.parent_rank == 1 && !params.multiline
                     || T::box_lines() && self.rank() <= 1 && params.parent_rank <= 1
                     || !T::box_lines() && self.rank() < params.max_boxed_rank)
                 || T::compress_list_grid() && self.rank() <= 1
             {
                 // Normal surrounding
-                if grid_row_count == 1 && self.rank() == 1 {
+                if grid_row_count == 1 && self.rank() == 1 && !params.multiline {
                     outlined = true;
                     // Add brackets to lists
                     let (left, right) = if requires_summary || self.is_map() {

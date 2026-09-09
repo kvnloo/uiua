@@ -1,7 +1,12 @@
 # Uiua Changelog
 
 Uiua is not yet stable.
-<!--This version is not yet released. If you are reading this on the website, then these changes are live here.-->
+
+## 0.20.0 - 2026-??-??
+This version is not yet released. If you are reading this on the website, then these changes are live here.
+### Interpreter
+- The pretty printer now shows simple box lists using `{}`s and spaces instead of box drawing characters.
+  - This make reading simple box arrays much easier
 
 ## 0.19.1 - 2026-09-03
 ### Interpreter
