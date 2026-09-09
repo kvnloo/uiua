@@ -63,8 +63,8 @@ pub struct Compiler {
     pub(crate) scope: Scope,
     /// Ancestor scopes of the current one
     higher_scopes: Vec<Scope>,
-    /// Immutables stack
-    immutables: Vec<ImmutableSlot>,
+    /// Locals stack
+    locals: Vec<LocalSlot>,
     /// Determines which How test scopes are run
     mode: RunMode,
     /// The paths of files currently being imported (used to detect import cycles)
@@ -109,7 +109,7 @@ impl Default for Compiler {
             current_bindings: Vec::new(),
             next_bindex: 0,
             scope: Scope::default(),
-            immutables: Vec::new(),
+            locals: Vec::new(),
             higher_scopes: Vec::new(),
             mode: RunMode::All,
             current_imports: EcoVec::new(),
@@ -282,7 +282,7 @@ struct CurrentBinding {
 }
 
 #[derive(Clone)]
-struct ImmutableSlot {
+struct LocalSlot {
     name: Ident,
     span: CodeSpan,
     used: bool,
@@ -611,7 +611,7 @@ impl Compiler {
         if let InputSrc::File(_) = &src {
             self.current_imports.pop();
         }
-        self.end_immutables(0, None);
+        self.end_locals(0, None);
 
         // Collect errors
         match res {
@@ -1374,15 +1374,15 @@ impl Compiler {
                 }
                 Node::empty()
             }
-            Word::Immutable(im) => {
-                self.experimental_error_them(&word.span, || "Immutables");
-                self.immutables.push(ImmutableSlot {
+            Word::Local(im) => {
+                self.experimental_error_them(&word.span, || "Locals");
+                self.locals.push(LocalSlot {
                     name: im.name,
                     span: word.span.clone(),
                     used: false,
                 });
-                self.code_meta.immutable_uses.insert(word.span.clone(), 0);
-                Node::BindImmutable {
+                self.code_meta.local_uses.insert(word.span.clone(), 0);
+                Node::BindLocal {
                     span: self.add_span(word.span),
                 }
             }
@@ -2020,14 +2020,14 @@ impl Compiler {
             self.code_meta.completions.insert(span.clone(), completions);
         }
 
-        // Look in immutables
+        // Look in locals
         if let Some((index, im)) =
-            (self.immutables.iter_mut().rev().enumerate()).find(|(_, im)| im.name == ident)
+            (self.locals.iter_mut().rev().enumerate()).find(|(_, im)| im.name == ident)
         {
             im.used = true;
-            (self.code_meta.immutable_references).insert(span.clone(), im.span.clone());
-            *self.code_meta.immutable_uses.get_mut(&im.span).unwrap() += 1;
-            return Node::GetImmutable {
+            (self.code_meta.local_references).insert(span.clone(), im.span.clone());
+            *self.code_meta.local_uses.get_mut(&im.span).unwrap() += 1;
+            return Node::GetLocal {
                 index,
                 span: self.add_span(span),
                 take: false,
@@ -3234,11 +3234,11 @@ impl Compiler {
             )
         })
     }
-    fn end_immutables(&mut self, start_height: usize, node: Option<&mut Node>) {
-        if self.immutables.len() <= start_height {
+    fn end_locals(&mut self, start_height: usize, node: Option<&mut Node>) {
+        if self.locals.len() <= start_height {
             return;
         }
-        let n = self.immutables.len() - start_height;
+        let n = self.locals.len() - start_height;
         let node = node.unwrap_or(&mut self.asm.root);
         for i in 0..n {
             fn recur(node: &mut Node, i: usize) -> bool {
@@ -3246,7 +3246,7 @@ impl Compiler {
                     Node::Run(nodes) => {
                         nodes.make_mut().iter_mut().rev().any(|node| recur(node, i))
                     }
-                    Node::GetImmutable { index, take, .. } if *index == i => {
+                    Node::GetLocal { index, take, .. } if *index == i => {
                         *take = true;
                         true
                     }
@@ -3264,7 +3264,7 @@ impl Compiler {
             }
             recur(node, i);
         }
-        node.push(Node::PopImmutables { n });
+        node.push(Node::PopLocals { n });
     }
 }
 

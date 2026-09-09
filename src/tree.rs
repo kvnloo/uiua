@@ -39,12 +39,12 @@ node!(
     CallMacro { index: usize, sig: Signature, span: usize },
     /// Bind a global value
     BindGlobal { index: usize, span: usize },
-    /// Bind an immutable
-    BindImmutable { span: usize },
-    /// Get an immutable
-    GetImmutable { index: usize, span: usize, take: bool },
-    /// Pop multiple immutables
-    PopImmutables { n: usize },
+    /// Bind an local
+    BindLocal { span: usize },
+    /// Get an local
+    GetLocal { index: usize, span: usize, take: bool },
+    /// Pop multiple locals
+    PopLocals { n: usize },
     /// Set a value's label
     Label(label(EcoString), span(usize)),
     /// Remove a value's label
@@ -849,14 +849,14 @@ impl fmt::Debug for Node {
             Node::TrackCaller(inner) => {
                 f.debug_tuple("track-caller").field(inner.as_ref()).finish()
             }
-            Node::BindImmutable { .. } => write!(f, "bind-im"),
-            Node::GetImmutable {
+            Node::BindLocal { .. } => write!(f, "bind-im"),
+            Node::GetLocal {
                 index, take: false, ..
             } => write!(f, "get-im-{index}"),
-            Node::GetImmutable {
+            Node::GetLocal {
                 index, take: true, ..
             } => write!(f, "take-im-{index}"),
-            Node::PopImmutables { n, .. } => write!(f, "pop-im-{n}"),
+            Node::PopLocals { n, .. } => write!(f, "pop-im-{n}"),
         }
     }
 }
@@ -921,7 +921,7 @@ impl Node {
                 Node::TrackCaller(sn) => recurse(&sn.node, purity, asm, visited),
                 Node::NoInline(n) => recurse(n, purity, asm, visited),
                 Node::Dynamic(_) => false,
-                Node::BindImmutable { .. } => false,
+                Node::BindLocal { .. } => false,
                 _ => true,
             };
             visited.truncate(len);

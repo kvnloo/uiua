@@ -363,7 +363,7 @@ pub enum Word {
     OutputComment { i: usize, n: usize },
     Subscripted(Box<Subscripted>),
     InlineMacro(Box<InlineMacro>),
-    Immutable(Immutable),
+    Local(Local),
 }
 
 impl PartialEq for Word {
@@ -390,7 +390,7 @@ impl PartialEq for Word {
             }
             (Self::Placeholder(_), Self::Placeholder(_)) => false,
             (Self::Comment(a), Self::Comment(b)) => a == b,
-            (Self::Immutable(a), Self::Immutable(b)) => a == b,
+            (Self::Local(a), Self::Local(b)) => a == b,
             _ => discriminant(self) == discriminant(other),
         }
     }
@@ -492,7 +492,7 @@ impl fmt::Debug for Word {
             Word::InlineMacro(mac) => {
                 write!(f, "inline_macro({:?}{}))", mac.func.value, mac.ident.value)
             }
-            Word::Immutable(im) => write!(f, "{im:?}"),
+            Word::Local(im) => write!(f, "{im:?}"),
         }
     }
 }
@@ -987,11 +987,11 @@ impl fmt::Display for NumWord {
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-pub struct Immutable {
+pub struct Local {
     pub name: Ident,
 }
 
-impl fmt::Debug for Immutable {
+impl fmt::Debug for Local {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:", self.name)
     }

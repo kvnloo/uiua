@@ -956,11 +956,11 @@ impl Parser<'_> {
                 return Some(span.sp(Word::IncompleteRef(path)));
             }
         };
-        // Immutables
+        // Locals
         if first.path.is_empty()
             && let Some(span) = self.exact(Colon.into())
         {
-            return Some((first.name.span.merge(span)).sp(Word::Immutable(Immutable {
+            return Some((first.name.span.merge(span)).sp(Word::Local(Local {
                 name: first.name.value,
             })));
         }

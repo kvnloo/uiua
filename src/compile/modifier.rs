@@ -383,8 +383,8 @@ impl Compiler {
         subscript: Option<Sp<Subscript>>,
     ) -> UiuaResult<Node> {
         use Primitive::*;
-        let immutables_height = self.immutables.len();
-        let immutables_escape = match &modified.modifier.value {
+        let locals_height = self.locals.len();
+        let locals_escape = match &modified.modifier.value {
             Modifier::Primitive(prim) => match prim {
                 Content | Evert | Under | Fill => true,
                 Both => false,
@@ -394,8 +394,8 @@ impl Compiler {
             Modifier::Macro(_) => true,
         };
         let res = self.modified_impl(modified, subscript);
-        if !immutables_escape {
-            self.immutables.truncate(immutables_height);
+        if !locals_escape {
+            self.locals.truncate(locals_height);
         }
         res
     }
@@ -1788,13 +1788,13 @@ impl Compiler {
         {
             // Module import macro
             let call = names.get_last("Call");
-            let immutables_height = self.immutables.len();
+            let locals_height = self.locals.len();
             let (_, sn) = self.in_scope(ScopeKind::AllInModule, move |comp| {
                 comp.scope.names.extend_from_other(names);
                 comp.words_sig(operands)
             })?;
             let (mut node, sig) = sn.into();
-            self.end_immutables(immutables_height, Some(&mut node));
+            self.end_locals(locals_height, Some(&mut node));
             if data_func {
                 // Data macro
                 let BindingKind::Func(call_func) =

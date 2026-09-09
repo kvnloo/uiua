@@ -713,7 +713,7 @@ pub fn gen_code_view(code: &str, hidden: &str) -> View {
                         SpanKind::Strand => "strand-span",
                         SpanKind::Subscript(Some(prim), n) => prim_sig_class(*prim, n.as_ref()),
                         SpanKind::MacroDelim(margs) => modifier_class(*margs),
-                        SpanKind::Immutable { bind: true, .. } => sig_class((1, 0).into()),
+                        SpanKind::Local { bind: true, .. } => sig_class((1, 0).into()),
                         _ => "",
                     };
                     match kind {
@@ -1063,10 +1063,10 @@ pub fn gen_code_view(code: &str, hidden: &str) -> View {
                                 .into_view(),
                             )
                         }
-                        SpanKind::Immutable { bind, uses } => {
+                        SpanKind::Local { bind, uses } => {
                             let class = format!("code-span {color_class}");
                             let title = format!(
-                                "{}immutable\n{uses} use{}",
+                                "{}local\n{uses} use{}",
                                 if bind { "bind " } else { "" },
                                 if uses == 1 { "" } else { "s" }
                             );
