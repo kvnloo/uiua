@@ -18,8 +18,8 @@ use thread_local::ThreadLocal;
 use threadpool::ThreadPool;
 
 use crate::{
-    Array, Assembly, BindingKind, BindingMeta, Boxed, CodeSpan, Compiler, Function, FunctionId,
-    Ident, Inputs, IntoSysBackend, LocalIndex, Node, Primitive, Report, SafeSys, SigNode,
+    Array, Assembly, Bind, BindingKind, BindingMeta, Boxed, CodeSpan, Compiler, Function,
+    FunctionId, Ident, Inputs, IntoSysBackend, Node, Primitive, Report, SafeSys, SigNode,
     Signature, Span, StackArg, SysBackend, TraceFrame, UiuaError, UiuaErrorKind, UiuaResult,
     VERSION, Value,
     algorithm::{self, validate_size_impl},
@@ -578,7 +578,7 @@ impl Uiua {
                 env.call(&func)
             }),
             Node::BindGlobal { span, index } => {
-                let local = LocalIndex {
+                let bind = Bind {
                     index,
                     public: false,
                 };
@@ -592,7 +592,7 @@ impl Uiua {
                 value.try_shrink();
                 // Binding is a constant
                 self.asm
-                    .bind_const(local, Some(value), span, BindingMeta::default());
+                    .bind_const(bind, Some(value), span, BindingMeta::default());
                 Ok(())
             }
             Node::Array {

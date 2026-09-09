@@ -123,7 +123,7 @@ pub struct ScopedModule {
     pub kind: ModuleKind,
     /// The items
     pub items: Vec<Item>,
-    /// The local imports exported from the module
+    /// The scoped imports exported from the module
     pub imports: Option<ImportLine>,
     /// The span of the closing delimiter
     pub close_span: Option<CodeSpan>,

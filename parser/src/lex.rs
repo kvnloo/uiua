@@ -651,7 +651,6 @@ pub enum Token {
     AlmostEqual,
     DownArrow,
     Ellipses,
-    Circle,
     OpenAngle,
     CloseAngle,
     OpenModule,
@@ -773,7 +772,6 @@ impl fmt::Display for Token {
             Token::AlmostEqual => write!(f, "≈"),
             Token::DownArrow => write!(f, "↓"),
             Token::Ellipses => write!(f, "‥"),
-            Token::Circle => write!(f, "○"),
             Token::OpenAngle => write!(f, "⟨"),
             Token::CloseAngle => write!(f, "⟩"),
             Token::Newline => write!(f, "newline"),
@@ -1154,7 +1152,6 @@ impl<'a> Lexer<'a> {
                 "←" if self.next_char_exact("~") => self.end(LeftStrokeArrow, start),
                 "←" => self.end(LeftArrow, start),
                 "↚" => self.end(LeftStrokeArrow, start),
-                "○" => self.end(Circle, start),
                 "┌" if self.next_char_exact("─") && self.next_char_exact("╴")
                     || self.next_char_exact("-") && self.next_char_exact("-") =>
                 {

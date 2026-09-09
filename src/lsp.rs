@@ -11,10 +11,12 @@ use std::{
 };
 
 use crate::{
-    Assembly, BindingInfo, BindingKind, BindingMeta, CONSTANTS, CodeSpan, Compiler, Ident,
-    InputSrc, Inputs, LocalIndex, PreEvalMode, Primitive, SafeSys, Shape, Signature, Sp,
-    SubscriptToken, SysBackend, UiuaError, Value, ast::*, is_custom_glyph, parse,
-    parse::ident_modifier_args,
+    Assembly, Bind, BindingInfo, BindingKind, BindingMeta, CONSTANTS, CodeSpan, Compiler, Ident,
+    InputSrc, Inputs, PreEvalMode, Primitive, SafeSys, Shape, Signature, Sp, SubscriptToken,
+    SysBackend, UiuaError, Value,
+    ast::*,
+    is_custom_glyph,
+    parse::{ident_modifier_args, parse},
 };
 
 /// Kinds of span in Uiua code, meant to be used in the language server or other IDE tools
@@ -182,7 +184,7 @@ pub struct CodeMeta {
     /// A map of inline macro functions to their number of arguments
     pub inline_macros: HashMap<CodeSpan, usize>,
     /// A map of top-level binding names to their indices
-    pub top_level_names: HashMap<Ident, LocalIndex>,
+    pub top_level_names: HashMap<Ident, Bind>,
     /// A map of the spans of top-level lines to values
     pub top_level_values: HashMap<CodeSpan, Vec<Value>>,
     /// A map of strand spans

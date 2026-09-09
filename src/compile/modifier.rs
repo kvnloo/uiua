@@ -345,8 +345,8 @@ impl Compiler {
             }
             m => {
                 if let Modifier::Ref(name) = m {
-                    if let Ok(Some((_, local))) = self.ref_local(name) {
-                        if self.asm.code_macros.contains_key(&local.index) {
+                    if let Ok(Some((_, bind))) = self.ref_bind(name) {
+                        if self.asm.code_macros.contains_key(&bind.index) {
                             return Ok(None);
                         }
                     } else {
@@ -471,8 +471,8 @@ impl Compiler {
                 Modifier::Primitive(_) => true,
                 Modifier::Macro(..) => false,
                 Modifier::Ref(name) => self
-                    .ref_local(name)?
-                    .is_some_and(|(_, local)| self.asm.index_macros.contains_key(&local.index)),
+                    .ref_bind(name)?
+                    .is_some_and(|(_, bind)| self.asm.index_macros.contains_key(&bind.index)),
             };
             if strict_args {
                 // Validate operand count
@@ -1750,17 +1750,17 @@ impl Compiler {
         modifier_span: CodeSpan,
         operands: Vec<Sp<Word>>,
     ) -> UiuaResult<Node> {
-        let Some((path_locals, local)) = self.ref_local_impl(&r, LookupPreference::Macro)? else {
+        let Some((path_binds, bind)) = self.ref_bind_impl(&r, LookupPreference::Macro)? else {
             return Ok(Node::empty());
         };
-        self.validate_local(&r.name.value, local, &r.name.span);
+        self.validate_bind(&r.name.value, bind, &r.name.span);
         self.code_meta
             .global_references
-            .insert(r.name.span.clone(), local.index);
-        for (local, comp) in path_locals.into_iter().zip(&r.path) {
-            (self.code_meta.global_references).insert(comp.module.span.clone(), local.index);
+            .insert(r.name.span.clone(), bind.index);
+        for (bind, comp) in path_binds.into_iter().zip(&r.path) {
+            (self.code_meta.global_references).insert(comp.module.span.clone(), bind.index);
         }
-        let binfo = &mut self.asm.bindings.make_mut()[local.index];
+        let binfo = &mut self.asm.bindings.make_mut()[bind.index];
         binfo.used = true;
         // Handle recursion depth
         self.comptime_depth += 1;
@@ -1770,14 +1770,14 @@ impl Compiler {
                 "Macro makes compilation recur too deep",
             ));
         }
-        let node = if let Some(mac) = self.asm.index_macros.get(&local.index).cloned() {
+        let node = if let Some(mac) = self.asm.index_macros.get(&bind.index).cloned() {
             // Index macros
-            self.index_macro(mac, operands, None, r.name, local, modifier_span)?
-        } else if let Some(mac) = self.asm.code_macros.get(&local.index).cloned() {
+            self.index_macro(mac, operands, None, r.name, bind, modifier_span)?
+        } else if let Some(mac) = self.asm.code_macros.get(&bind.index).cloned() {
             // Code macros
             self.code_macro(Some(r.name.value), modifier_span, operands, mac)?
         } else if let Some((names, data_func)) =
-            (self.asm.bindings.get(local.index)).and_then(|binfo| match &binfo.kind {
+            (self.asm.bindings.get(bind.index)).and_then(|binfo| match &binfo.kind {
                 BindingKind::Module(m) => Some((m.names.clone(), m.data_func)),
                 BindingKind::Scope(i) => {
                     let scope = self.higher_scopes.get(*i).unwrap_or(&self.scope);
@@ -1854,11 +1854,11 @@ impl Compiler {
                         Node::Prim(Primitive::Pick, span),
                         Node::ImplPrim(ImplPrimitive::UnBox, span),
                     ]);
-                    let local = LocalIndex {
-                        index: comp.next_global,
+                    let bind = Bind {
+                        index: comp.next_bindex,
                         public: true,
                     };
-                    comp.next_global += 1;
+                    comp.next_bindex += 1;
                     let func = comp.asm.add_function(
                         FunctionId::Named(name.clone()),
                         Signature::new(1, 1),
@@ -1870,14 +1870,14 @@ impl Compiler {
                         ..Default::default()
                     };
                     comp.asm
-                        .add_binding_at(local, BindingKind::Func(func), None, meta);
-                    comp.prim_arg_bindings.insert(key.clone(), local.index);
+                        .add_binding_at(bind, BindingKind::Func(func), None, meta);
+                    comp.prim_arg_bindings.insert(key.clone(), bind.index);
                 }
-                let local = LocalIndex {
+                let bind = Bind {
                     index: comp.prim_arg_bindings[&key],
                     public: true,
                 };
-                comp.scope.names.insert(name.clone(), local);
+                comp.scope.names.insert(name.clone(), bind);
             }
             // Compile words
             comp.words_sig(operands)
@@ -1914,15 +1914,15 @@ impl Compiler {
         operands: Vec<Sp<Word>>,
         subscript: Option<SubscriptNumber>,
         name: Sp<Ident>,
-        local: LocalIndex,
+        bindex: Bind,
         ref_span: CodeSpan,
     ) -> UiuaResult<Node> {
         let span = self.add_span(ref_span.clone());
         Ok(match self.scope.kind {
-            ScopeKind::Macro(Some(MacroLocal {
+            ScopeKind::Macro(Some(MacroBind {
                 macro_index,
                 expansion_index: Some(index),
-            })) if macro_index == local.index => {
+            })) if macro_index == bindex.index => {
                 // Recursive
                 if let Some(sig) = mac.sig {
                     Node::CallMacro { index, sig, span }
@@ -1945,11 +1945,11 @@ impl Compiler {
                 // We know that this is a recursive call if the scope tracks
                 // a macro with the same index.
                 let expansion_index = mac.recursive.then(|| {
-                    let expansion_index = self.next_global;
+                    let expansion_index = self.next_bindex;
                     let args = ident_modifier_args(&name.value);
                     // Add temporary binding
                     self.asm.add_binding_at(
-                        LocalIndex {
+                        Bind {
                             index: expansion_index,
                             public: false,
                         },
@@ -1960,16 +1960,16 @@ impl Compiler {
                         Some(ref_span.clone()),
                         BindingMeta::default(),
                     );
-                    self.next_global += 1;
+                    self.next_bindex += 1;
                     expansion_index
                 });
-                let macro_local = MacroLocal {
-                    macro_index: local.index,
+                let macro_bind = MacroBind {
+                    macro_index: bindex.index,
                     expansion_index,
                 };
                 // Compile
                 let SigNode { node, sig } = self.suppress_diagnostics(|comp| {
-                    comp.macro_scope(LocalNames::default(), Some(macro_local), |comp| {
+                    comp.macro_scope(ScopedBindings::default(), Some(macro_bind), |comp| {
                         comp.words_sig(mac.words)
                     })
                 })?;
@@ -1981,7 +1981,7 @@ impl Compiler {
                 // Add
                 let id = FunctionId::Macro(Some(name.value), name.span);
                 let func = self.asm.add_function(id, sig, node, FunctionOrigin::Macro);
-                if let Some(exp_index) = macro_local.expansion_index {
+                if let Some(exp_index) = macro_bind.expansion_index {
                     self.asm.bindings.make_mut()[exp_index].kind = BindingKind::Func(func.clone());
                 }
                 Node::Call(func, span)
@@ -2049,8 +2049,8 @@ impl Compiler {
         let mut code: Option<String> = None;
         (|| -> UiuaResult {
             if let Some(index) = self.node_unbound_index(&mac.root.node) {
-                let name = self.scope.names.all_iter().find_map(|(name, local)| {
-                    if local.index == index {
+                let name = self.scope.names.all_iter().find_map(|(name, bind)| {
+                    if bind.index == index {
                         Some(name)
                     } else {
                         None
@@ -2293,7 +2293,7 @@ impl Compiler {
         }
         if let Some(index) = self.node_unbound_index(&sn.node) {
             let name = (self.scope.names.visible_iter())
-                .find_map(|(ident, local)| (local.index == index).then_some(ident));
+                .find_map(|(ident, bind)| (bind.index == index).then_some(ident));
             return Err(if let Some(name) = name {
                 let name_span = self.asm.bindings[index].span.clone();
                 self.error(
@@ -2337,14 +2337,14 @@ impl Compiler {
     /// Newly created bindings will be added to the current scope after the function is run.
     fn macro_scope<T>(
         &mut self,
-        names: LocalNames,
-        macro_local: Option<MacroLocal>,
+        names: ScopedBindings,
+        mac_index: Option<MacroBind>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let orig_names = names.clone();
         // Create temp scope
         let temp_scope = Scope {
-            kind: ScopeKind::Macro(macro_local),
+            kind: ScopeKind::Macro(mac_index),
             names,
             experimental: self.scope.experimental,
             experimental_error: self.scope.experimental_error,
@@ -2357,12 +2357,12 @@ impl Compiler {
         let mut replaced_scope = self.higher_scopes.pop().unwrap();
         // If temp scope has a new name, or if its binding index changed,
         // then it is a new binding and should be added to the current scope
-        for (name, local) in take(&mut self.scope.names).into_visible_iter() {
+        for (name, bind) in take(&mut self.scope.names).into_visible_iter() {
             if orig_names
                 .get_last(&name)
-                .is_none_or(|l| l.index != local.index)
+                .is_none_or(|l| l.index != bind.index)
             {
-                replaced_scope.names.insert(name, local);
+                replaced_scope.names.insert(name, bind);
             }
         }
         self.scope = replaced_scope;
