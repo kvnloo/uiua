@@ -1049,11 +1049,14 @@ impl Compiler {
         }
     }
     /// Compile modifier args
-    fn args(&mut self, words: Vec<Sp<Word>>) -> UiuaResult<EcoVec<SigNode>> {
-        (words.into_iter())
+    fn args(&mut self, mut words: Vec<Sp<Word>>) -> UiuaResult<EcoVec<SigNode>> {
+        words.reverse();
+        let mut nodes: EcoVec<_> = (words.into_iter())
             .filter(|w| w.value.is_code())
             .map(|w| self.word_sig(w))
-            .collect()
+            .collect::<UiuaResult<_>>()?;
+        nodes.make_mut().reverse();
+        Ok(nodes)
     }
     fn words_sig(&mut self, words: Vec<Sp<Word>>) -> UiuaResult<SigNode> {
         let span = words
@@ -3235,6 +3238,8 @@ impl Compiler {
         })
     }
     fn end_locals(&mut self, start_height: usize, node: Option<&mut Node>) {
+        use {ImplPrimitive::*, Primitive::*};
+
         if self.locals.len() <= start_height {
             return;
         }
@@ -3250,9 +3255,16 @@ impl Compiler {
                         *take = true;
                         true
                     }
-                    Node::Mod(_, ops, _) | Node::ImplMod(_, ops, _) => {
-                        (ops.make_mut().iter_mut().rev()).any(|sn| recur(&mut sn.node, i))
-                    }
+                    Node::Mod(
+                        Dip | Gap | On | By | With | Off | Below | Above | Fork | Bracket,
+                        ops,
+                        _,
+                    ) => (ops.make_mut().iter_mut().rev()).any(|sn| recur(&mut sn.node, i)),
+                    Node::ImplMod(
+                        DipN(_) | OnSub(_) | BySub(_) | WithSub(_) | OffSub(_) | FixMatchRanks,
+                        ops,
+                        _,
+                    ) => (ops.make_mut().iter_mut().rev()).any(|sn| recur(&mut sn.node, i)),
                     Node::TrackCaller(sn) => recur(&mut Arc::make_mut(sn).node, i),
                     Node::NoInline(node) => recur(Arc::make_mut(node), i),
                     Node::Array { inner, .. } => recur(Arc::make_mut(inner), i),
@@ -3265,6 +3277,7 @@ impl Compiler {
             recur(node, i);
         }
         node.push(Node::PopLocals { n });
+        self.locals.drain(start_height..);
     }
 }
 

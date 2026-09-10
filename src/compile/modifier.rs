@@ -470,8 +470,7 @@ impl Compiler {
                 Modifier::Primitive(Primitive::Fork | Primitive::Bracket) => false,
                 Modifier::Primitive(_) => true,
                 Modifier::Macro(..) => false,
-                Modifier::Ref(name) => self
-                    .ref_bind(name)?
+                Modifier::Ref(name) => (self.ref_bind(name)?)
                     .is_some_and(|(_, bind)| self.asm.index_macros.contains_key(&bind.index)),
             };
             if strict_args {
@@ -541,8 +540,8 @@ impl Compiler {
         let b_op = operands.next().unwrap();
         let a_span = a_op.span.clone();
         let b_span = b_op.span.clone();
-        let a = self.word_sig(a_op)?;
         let b = self.word_sig(b_op)?;
+        let a = self.word_sig(a_op)?;
         Ok((a, b, a_span, b_span))
     }
     /// Inline a modifier

@@ -1,7 +1,5 @@
 # Uiua Todo
 
-# 0.19
-
 # 0.20
 
 - `uiua shell`
@@ -10,7 +8,6 @@
 - `fold` subscripts
 - Useful behavior for noadic functions in `rows`, `inventory`, `table`, and `stencil`
 - Chained access rework
-- Constrained non-tacit bindings
 - Document array summary notation
 
 # 1.0 - 202?-??-??

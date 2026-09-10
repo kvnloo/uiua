@@ -635,22 +635,21 @@ impl Spanner {
                         && chained.is_empty()
                         && let Some(bind_span) = self.code_meta.local_references.get(&word.span)
                     {
-                        let uses =
-                            (self.code_meta.local_uses.get(bind_span).copied()).unwrap_or(0);
-                        spans
-                            .push((word.span.clone()).sp(SpanKind::Local { bind: false, uses }))
-                    }
-
-                    spans.extend(self.ref_spans(r));
-                    for comp in chained {
-                        spans.push(comp.dot_span.clone().sp(SpanKind::Delimiter));
-                        spans.extend(self.ref_spans(&comp.item));
+                        // Local
+                        let uses = (self.code_meta.local_uses.get(bind_span).copied()).unwrap_or(0);
+                        spans.push((word.span.clone()).sp(SpanKind::Local { bind: false, uses }))
+                    } else {
+                        // Normal ident
+                        spans.extend(self.ref_spans(r));
+                        for comp in chained {
+                            spans.push(comp.dot_span.clone().sp(SpanKind::Delimiter));
+                            spans.extend(self.ref_spans(&comp.item));
+                        }
                     }
                 }
                 Word::IncompleteRef(path) => spans.extend(self.ref_path_spans(path)),
                 Word::Local(_) => {
-                    let uses =
-                        (self.code_meta.local_uses.get(&word.span).copied()).unwrap_or(0);
+                    let uses = (self.code_meta.local_uses.get(&word.span).copied()).unwrap_or(0);
                     spans.push((word.span.clone()).sp(SpanKind::Local { bind: true, uses }))
                 }
                 Word::Strand(items) => {

@@ -355,9 +355,7 @@ impl Compiler {
             });
 
         // Compile the body
-        let in_function = self
-            .scopes()
-            .any(|sc| matches!(sc.kind, ScopeKind::Function));
+        let in_function = (self.scopes()).any(|sc| matches!(sc.kind, ScopeKind::Function));
         let no_code_words = binding.words.iter().all(|w| !w.value.is_code());
         self.current_bindings.push(CurrentBinding {
             name: name.clone(),

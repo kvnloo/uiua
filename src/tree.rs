@@ -849,7 +849,7 @@ impl fmt::Debug for Node {
             Node::TrackCaller(inner) => {
                 f.debug_tuple("track-caller").field(inner.as_ref()).finish()
             }
-            Node::BindLocal { .. } => write!(f, "bind-im"),
+            Node::BindLocal { .. } => write!(f, "bind-local"),
             Node::GetLocal {
                 index, take: false, ..
             } => write!(f, "get-im-{index}"),
