@@ -171,7 +171,7 @@ Data definition field initializers can inform the type system.
 Foo.t
 ```
 
-The type system implementation is such that most type information can only flow _forward_ through the system, not backward. Except for at the very beginning of a function, type constaints cannot go backward to inform the argument types of the function.
+The type system implementation is such that most type information can only flow _forward_ through the system, not backward. Except for at the very beginning of a function, type constants cannot go backward to inform the argument types of the function.
 
 ## Data Definitions
 
