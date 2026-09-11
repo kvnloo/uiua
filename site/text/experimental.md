@@ -89,7 +89,7 @@ The Uiua compiler can do limited compile-time analysis of how the scalar types a
 
 _Note: Uiua type checking is and always will be best-effort. Uiua is a highly dynamic language, so not everything can be type checked completely._
 
-By putting a `#?` comment above or at the end of a function definition, you can make the compiler check check the scalar types and shapes of arguments and outputs of the function, based on the function's body.
+By putting a `#?` comment above or at the end of a function definition, you can make the compiler check the scalar types and shapes of arguments and outputs of the function, based on the function's body.
 
 The formatter will insert a representation of this type signature after the `#?`. The output types are to the left of the `?` and the argument types are to the right.
 

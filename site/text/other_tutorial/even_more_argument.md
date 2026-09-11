@@ -62,7 +62,7 @@ For example, if we wanted to keep all indices in an array that have `1`s in some
 
 ## [with]()
 
-[with]() has fewer common patterns that come up often, (other than `<Prims prims=[Assert, With, Match]/>` for [testing](/tutorial/Testing)), but it can still be useful in some situations.
+[with]() has fewer common patterns that come up often, (other than `⍤⤙≍` for [testing](/tutorial/Testing)), but it can still be useful in some situations.
 
 Its name was chosen because after using it, you end up with an array *with* a transformed version of it.
 
