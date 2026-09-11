@@ -725,9 +725,7 @@ impl Uiua {
             }),
             Node::BindLocal { span } => self.with_span(span, |env| {
                 let val = env.pop(1)?;
-                env.rt
-                    .locals
-                    .push(StackedLocal { value: Some(val) });
+                env.rt.locals.push(StackedLocal { value: Some(val) });
                 Ok(())
             }),
             Node::GetLocal { index, take, span } => self.with_span(span, |env| {
