@@ -3,7 +3,6 @@
 mod blog;
 mod docs;
 mod examples;
-mod idioms;
 mod markdown;
 mod other;
 mod other_tutorial;

@@ -7,6 +7,8 @@ This version is not yet released. If you are reading this on the website, then t
 ### Interpreter
 - The pretty printer now shows simple box lists using `{}`s and spaces instead of box drawing characters.
   - This make reading simple box arrays much easier
+### Website
+- Separate [Aliases](https://uiua.org/docs/aliases) page from the [Idioms](https://uiua.org/docs/idioms) page.
 
 ## 0.19.1 - 2026-09-03
 ### Interpreter
