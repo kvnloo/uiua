@@ -88,6 +88,7 @@ impl Scalar {
                 .iter()
                 .all(|sub_ty| slf_variants.iter().any(|sup_ty| sup_ty.superset_of(sub_ty))),
             (Scalar::Or(variants), _) => variants.iter().any(|ty| ty.scalar.superset_of(sub)),
+            (_, Scalar::Or(variants)) => variants.iter().all(|ty| self.superset_of(&ty.scalar)),
             (a, b) => discriminant(a) == discriminant(b),
         }
     }
@@ -261,5 +262,22 @@ mod union_scalar_regression_tests {
         let narrow = Scalar::Or(vec![Scalar::Nat.scalar_type()]);
         assert!(broad.superset_of(&narrow));
         assert!(!narrow.superset_of(&broad));
+    }
+
+    #[test]
+    fn union_inclusion_covers_nested_numeric_arms() {
+        let broad = Scalar::Or(vec![Scalar::Num.scalar_type()]);
+        let nested = Scalar::Or(vec![Scalar::Or(vec![
+            Scalar::Nat.scalar_type(),
+            Scalar::Int.scalar_type(),
+        ])
+        .scalar_type()]);
+        assert!(broad.superset_of(&nested));
+        assert!(Scalar::Num.superset_of(&nested));
+        assert!(!nested.superset_of(&broad));
+
+        let mixed = Scalar::Or(vec![Scalar::Nat.scalar_type(), Scalar::Char.scalar_type()]);
+        assert!(!broad.superset_of(&mixed));
+        assert!(!Scalar::Num.superset_of(&mixed));
     }
 }
