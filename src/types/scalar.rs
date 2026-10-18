@@ -267,11 +267,9 @@ mod union_scalar_regression_tests {
     #[test]
     fn union_inclusion_covers_nested_numeric_arms() {
         let broad = Scalar::Or(vec![Scalar::Num.scalar_type()]);
-        let nested = Scalar::Or(vec![Scalar::Or(vec![
-            Scalar::Nat.scalar_type(),
-            Scalar::Int.scalar_type(),
-        ])
-        .scalar_type()]);
+        let nested = Scalar::Or(vec![
+            Scalar::Or(vec![Scalar::Nat.scalar_type(), Scalar::Int.scalar_type()]).scalar_type(),
+        ]);
         assert!(broad.superset_of(&nested));
         assert!(Scalar::Num.superset_of(&nested));
         assert!(!nested.superset_of(&broad));

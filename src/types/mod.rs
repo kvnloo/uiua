@@ -2010,10 +2010,8 @@ mod union_type_regression_tests {
     fn rejected_union_variant_does_not_refine_the_next_variant() {
         let mut actual = Scalar::Box(ScalarBox::Any).scalar_type();
         // The first arm refines Box(Any) before its shape check fails.
-        let incompatible_shape = Scalar::Box(ScalarBox::All(Box::new(
-            Scalar::Nat.scalar_type(),
-        )))
-        .shaped([3]);
+        let incompatible_shape =
+            Scalar::Box(ScalarBox::All(Box::new(Scalar::Nat.scalar_type()))).shaped([3]);
         let compatible = Scalar::Box(ScalarBox::Any).scalar_type();
         let spec = Scalar::Or(vec![incompatible_shape, compatible]).any_shape();
         validate(spec, &mut actual, None).unwrap();
