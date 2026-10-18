@@ -410,11 +410,15 @@ mod tests {
             ),
         ] {
             let mut env = Uiua::with_native_sys();
-            env.run_str(code).unwrap_or_else(|e| panic!("{}", e.report()));
+            env.run_str(code)
+                .unwrap_or_else(|e| panic!("{}", e.report()));
             let (stack, under_stack) = env.take_stacks();
             assert_eq!(
                 stack,
-                expected.into_iter().map(crate::Value::from).collect::<Vec<_>>(),
+                expected
+                    .into_iter()
+                    .map(crate::Value::from)
+                    .collect::<Vec<_>>(),
                 "{code}"
             );
             assert!(under_stack.is_empty(), "{code}");
