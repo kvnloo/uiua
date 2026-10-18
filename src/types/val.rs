@@ -309,6 +309,7 @@ impl PartialEq for TypeVal {
             }
             (Self::Val(a), Self::Val(b)) => a == b,
             (Self::Type(a), Self::Type(b)) => a == b,
+            (Self::Or(a), Self::Or(b)) => a == b,
             _ => false,
         }
     }
@@ -459,5 +460,19 @@ impl fmt::Display for TypeVal {
                 write!(f, ")")
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod union_value_equality_regression_tests {
+    use super::*;
+
+    #[test]
+    fn union_values_compare_equal_to_themselves() {
+        let union = TypeVal::Or(vec![
+            TypeVal::Type(Scalar::Num.scalar_type()),
+            TypeVal::Type(Scalar::Char.scalar_type()),
+        ]);
+        assert_eq!(union, union.clone());
     }
 }
