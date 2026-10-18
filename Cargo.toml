@@ -1,0 +1,278 @@
+[workspace]
+members = ["site", "tests_ffi", "pad/editor", "parser"]
+
+[workspace.package]
+categories = ["compilers", "algorithms", "multimedia", "parser-implementations"]
+edition = "2024"
+keywords = ["uiua", "array", "tacit", "language", "apl"]
+license = "MIT"
+readme = "readme.md"
+repository = "https://github.com/uiua-lang/uiua"
+rust-version = "1.92.0"
+version = "0.20.0-dev.1"
+
+[dependencies.uiua_parser]
+path = "parser"
+version = "0.20.0-dev.1"
+
+[workspace.lints.clippy]
+cargo = {level = "warn", priority = -1}
+dbg_macro = "warn"
+multiple_crate_versions = "allow"
+negative_feature_names = "allow"
+non_std_lazy_statics = "warn"
+print_stdout = "warn"
+
+[workspace.dependencies]
+base64 = "0.22.0"
+bytemuck = "1.25"
+colored = "2"
+dashmap = {version = "6", features = ["serde"]}
+ecow = {version = "0.2.3", features = ["serde"]}
+enum-iterator = "2.3.0"
+flate2 = "1"
+hound = "3.5.1"
+js-sys = "0.3.69"
+leptos = "0.6.11"
+leptos_meta = {version = "0.6.11", features = ["csr"]}
+leptos_router = {version = "0.6.11", features = ["csr"]}
+rand = "0.10.0"
+serde = {version = "1", features = ["derive"]}
+serde_json = "1.0.115"
+smallvec = {version = "1.9", features = ["serde", "union", "const_new"]}
+unicode-segmentation = "1.10"
+urlencoding = "2"
+vorbis_rs = "0.5.5"
+# NOTE: if you change the wasm-bindgen version, remember to change it in nix/site.nix as well
+wasm-bindgen = "=0.2.108"
+
+[workspace.dependencies.web-sys]
+features = [
+  "Clipboard",
+  "ClipboardEvent",
+  "CssStyleDeclaration",
+  "DataTransfer",
+  "DataTransfer",
+  "DomRect",
+  "EventInit",
+  "File",
+  "FileList",
+  "FileReader",
+  "HtmlAudioElement",
+  "HtmlBrElement",
+  "Navigator",
+  "Node",
+  "Performance",
+  "Permissions",
+  "ResizeObserver",
+  "ResizeObserverEntry",
+  "ScrollBehavior",
+  "ScrollIntoViewOptions",
+  "ScrollLogicalPosition",
+  "Selection",
+  "Storage",
+  "StorageManager",
+]
+version = "0.3.70"
+
+[package]
+categories.workspace = true
+description = "A stack-based array programming language"
+documentation = "https://docs.rs/uiua"
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "uiua"
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+
+# Core dependencies
+bitflags = {version = "2", features = ["serde"]}
+bytemuck = {workspace = true, features = [
+  "must_cast",
+  "derive",
+  "extern_crate_alloc",
+]}
+colored.workspace = true
+crossbeam-channel = "0.5.12"
+dashmap.workspace = true
+ecow.workspace = true
+enum-iterator.workspace = true
+highway = "1.3.0"
+indexmap = {version = "2", features = ["serde"]}
+num_cpus = "1.16.0"
+open = {version = "5", optional = true}
+palette = {version = "0.7.6", default-features = false, features = ["std"]}
+parking_lot = "0.12.1"
+pastey = "0.2.3"
+pathdiff = "0.2.1"
+portable-atomic = "1"
+rand.workspace = true
+rapidhash = "4"
+rawrrr = {version = "0.2.1", optional = true}
+rayon = "1.9.0"
+regex = "1.10.3"
+rustls = {version = "0.23.35", optional = true, default-features = false, features = [
+  "std",
+  "tls12",
+  "ring",
+]}
+serde = {workspace = true, features = ["rc"]}
+serde_json.workspace = true
+smallvec = {workspace = true, features = ["serde", "union", "const_new"]}
+terminal_size = {version = "0.4.2", optional = true}
+thread_local = "1"
+threadpool = "1.8.1"
+time = {version = "0.3.36", features = ["local-offset"]}
+trash = {version = "5.2.2", optional = true}
+unicode-segmentation.workspace = true
+viuer = {version = "0.9", optional = true}
+webpki-roots = {version = "1.0.2", optional = true}
+
+# Native audio dependencies
+hodaun = {version = "0.4.1", optional = true, features = ["output", "wav"]}
+
+# Binary dependencies
+clap = {version = "4", optional = true, features = ["derive"]}
+color-backtrace = {version = "0.6.1", optional = true}
+ctrlc = {version = "3.4.6", optional = true}
+icy_sixel = {version = "0.5.0", optional = true}
+notify = {version = "8", optional = true}
+rustyline = {version = "15.0.0", optional = true}
+terminal-light = {version = "1.4.0", optional = true}
+tokio = {version = "1", optional = true, features = ["io-std", "rt"]}
+tower-lsp = {version = "0.20.0", optional = true, features = ["proposed"]}
+
+# Profiling dependencies
+serde_yaml = {version = "0.9.33", optional = true}
+
+# Feature dependencies
+arboard = {version = "3", optional = true, features = ["wayland-data-control"]}
+calamine = {version = "0.36.0", optional = true}
+cosmic-text = {version = "0.15.0", optional = true}
+csv = {version = "1", optional = true}
+flate2 = {workspace = true, optional = true}
+gif = {version = "0.13.1", optional = true, default-features = false, features = ["std"]}
+hound = {workspace = true, optional = true}
+image = {version = "0.25", optional = true, default-features = false, features = [
+  "bmp",
+  "gif",
+  "ico",
+  "jpeg",
+  "png",
+  "qoi",
+  "webp",
+]}
+json5 = {version = "1.3.0", optional = true}
+libffi = {version = "4", optional = true}
+libloading = {version = "0.8.3", optional = true}
+nokhwa = {version = "0.10.9", optional = true, features = ["input-native"]}
+num-complex = {version = ">=0.4.1", optional = true, default-features = false, features = [
+  "bytemuck",
+]}
+png = {version = "0.17.16", optional = true}
+rustfft = {version = "6.2.0", optional = true}
+rustls-pki-types = {version = "1.15.0", optional = true}
+simple_excel_writer = {version = "0.2.0", optional = true}
+sys-locale = {version = "0.3.1", optional = true}
+vorbis_rs = {workspace = true, optional = true}
+
+# Web-only dependencies
+js-sys = {workspace = true, optional = true}
+wasm-bindgen = {workspace = true, optional = true}
+web-sys = {version = "0.3.60", optional = true}
+
+# Window dependencies
+eframe = {version = "0.34.0", optional = true, features = ["persistence"]}
+native-dialog = {version = "0.7.0", optional = true}
+rmp-serde = {version = "1.3.0", optional = true}
+
+[features]
+apng = ["dep:png"]
+audio = ["hodaun", "audio_encode", "ogg"]
+audio_encode = ["hound"]
+batteries = [
+  "ga", # Comment in for dev
+  "gif",
+  "apng",
+  "image",
+  "audio_encode",
+  "csv",
+  "xlsx",
+  "json5",
+  "fft",
+  "font_shaping",
+  "compress",
+]
+binary = [
+  "ctrlc",
+  "notify",
+  "clap",
+  "color-backtrace",
+  "rustyline",
+  "native_sys",
+  "terminal-light",
+  "terminal_size",
+]
+binary_batteries = [
+  "ffi",
+  "ogg",
+]
+bytes = [] # No longer used
+clipboard = ["arboard"]
+compress = ["flate2"]
+debug = []
+default = [
+  # "window", # Comment in for dev
+  # "webcam", # Comment in for dev
+  "binary",
+  "batteries",
+  "binary_batteries",
+  "terminal_image",
+  "lsp",
+  "stand",
+  "tls",
+  "invoke",
+  "trash",
+  "native_sys",
+  "raw_mode",
+  "clipboard",
+  "opt",
+]
+ffi = ["libffi", "libloading"]
+fft = ["rustfft", "num-complex"]
+font_shaping = ["cosmic-text", "sys-locale"]
+full = ["audio", "webcam", "window"] # Enables all optional features
+ga = ["uiua_parser/multivector"]
+gif = ["dep:gif", "image"]
+invoke = ["open"]
+lsp = ["tower-lsp", "tokio", "native_sys"]
+native_sys = []
+no_self_update = [] # Disable the `uiua update` command
+ogg = ["vorbis_rs"]
+opt = [] # Enables some optimizations but increases binary size
+profile = ["serde_yaml"]
+raw_mode = ["rawrrr", "native_sys"]
+stand = ["native_sys"]
+terminal_image = ["viuer", "image", "icy_sixel"]
+tls = ["rustls", "webpki-roots", "rustls-pki-types"]
+web = ["wasm-bindgen", "js-sys", "web-sys"]
+webcam = ["image", "nokhwa"]
+window = ["eframe", "rmp-serde", "image", "native-dialog"]
+xlsx = ["calamine", "simple_excel_writer"]
+# Use system static libraries instead of building them
+system = ["libffi?/system"]
+
+[[bin]]
+name = "uiua"
+required-features = ["binary"]
+
+[lints]
+workspace = true
+
+[profile.dev]
+incremental = true
