@@ -414,7 +414,7 @@ PivotB ← [6_7_12_19 1_8_8_8 6_3_5_13]
 PivotX ← Solve PivotB PivotA
 ⍤⤙≍ 3_4 △ PivotX
 ⍤⤙≍ [1_2_3_4 2_¯1_0_3 ¯1_4_2_0] ⁅₈ PivotX
-⍤ <0.00000001 /↥ ♭⌵- PivotB ⊞(/+×)⊙⍉ PivotA PivotX
+⍤⤙< 0.00000001 /↥ ♭⌵- PivotB ⊞(/+×)⊙⍉ PivotA PivotX
 ⍤⤙≍ [3_4] ⁅₈ Solve [6_8] [↯1 2]
 ⍤⤙≍ 0_3 △ Solve (↯0_3 []) (↯0_0 [])
 ⍤⤙≍ 2_0 △ Solve (↯2_0 []) I,2
