@@ -947,7 +947,7 @@ impl Parser<'_> {
         }
         Some(Ok(Ref { name, path }))
     }
-    fn chained_ref(&mut self) -> Option<Sp<Word>> {
+    fn ref_like(&mut self) -> Option<Sp<Word>> {
         let first = match self.ref_inner()? {
             Ok(r) => r,
             Err(path) => {
@@ -956,6 +956,14 @@ impl Parser<'_> {
                 return Some(span.sp(Word::IncompleteRef(path)));
             }
         };
+        // Locals
+        if first.path.is_empty()
+            && let Some(span) = self.exact(Colon.into())
+        {
+            return Some((first.name.span.merge(span)).sp(Word::Local(Local {
+                name: first.name.value,
+            })));
+        }
         let mut chained = Vec::new();
         while let Some(dot_span) = self
             .exact(DoubleTilde.into())
@@ -1093,11 +1101,13 @@ impl Parser<'_> {
         }
         // Collect items
         let mut items = Vec::new();
+        let mut reset = self.index;
         while self.exact(Underscore.into()).is_some() {
             let item = match self.modified() {
                 Some(mut item) => {
                     if let Word::Spaces = item.value {
                         if items.is_empty() {
+                            self.index = reset;
                             break;
                         }
                         self.errors.push(self.expected([Expectation::Term]));
@@ -1105,6 +1115,7 @@ impl Parser<'_> {
                             Some(item) => item,
                             None => {
                                 self.errors.push(self.expected([Expectation::Term]));
+                                self.index = reset;
                                 break;
                             }
                         };
@@ -1112,10 +1123,11 @@ impl Parser<'_> {
                     item
                 }
                 None => {
-                    self.errors.push(self.expected([Expectation::Term]));
+                    self.index = reset;
                     break;
                 }
             };
+            reset = self.index;
             items.push(item);
         }
         // If there is only one item and no underscores, return it
@@ -1288,7 +1300,7 @@ impl Parser<'_> {
         }
         let mut word = if let Some(n) = self.num() {
             n.map(|(n, s)| Word::Number(n, s))
-        } else if let Some(refer) = self.chained_ref() {
+        } else if let Some(refer) = self.ref_like() {
             refer
         } else if let Some(prim) = self.prim() {
             prim.map(Word::Primitive)
@@ -1300,6 +1312,8 @@ impl Parser<'_> {
             op.map(Word::Placeholder)
         } else if let Some(span) = self.exact(PlaceholderN) {
             span.sp(Word::PlaceholderN)
+        } else if let Some(int) = self.next_token_map(Token::as_based_int) {
+            int.map(Word::BasedInt)
         } else if let Some(label) = self.next_token_map(Token::as_label) {
             let span = label.span;
             if let Some(label) = label.value {
@@ -1377,6 +1391,8 @@ impl Parser<'_> {
                     Word::Spaces
                 },
             )
+        } else if let Some(span) = self.exact(Underscore.into()) {
+            span.sp(Word::Underscore)
         } else {
             return None;
         };
@@ -1408,7 +1424,10 @@ impl Parser<'_> {
             if self.exact(Primitive::Reduce.into()).is_some() {
                 if let Some(((denom, ds), dspan)) = self
                     .numer_or_denom()
-                    .filter(|n| !n.value.1.contains(['.', '∞']))
+                    .filter(|n| {
+                        !n.value.1.contains(['.', '∞'])
+                            && !SUBSCRIPT_DIGITS.iter().any(|&d| n.value.1.contains(d))
+                    })
                     .map(Into::into)
                 {
                     let n = numer.map_with(denom, |n, d| n / d, |n, d| n / d);

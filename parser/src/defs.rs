@@ -497,7 +497,7 @@ primitive!(
     /// ex: =5 5
     /// ex: =1 [1 2 3]
     /// ex: = [1 2 2] [1 2 3]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: = {1 2_3 4_5_6} {1_2 3 4_5_6}
     (2, Eq, DyadicPervasive, ("equals", AsciiToken::Equal, '=')),
     /// Compare for inequality
@@ -506,7 +506,7 @@ primitive!(
     /// ex: ≠5 5
     /// ex: ≠1 [1 2 3]
     /// ex: ≠ [1 2 2] [1 2 3]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: ≠ {1 2_3 4_5_6} {1_2 3 4_5_6}
     (
         2,
@@ -523,7 +523,7 @@ primitive!(
     /// ex: <7 3
     /// ex: <2 [1 2 3]
     /// ex: < [1 2 2] [1 2 3]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: < {1 2_3 4_5_6} {1_2 3 4_5_6}
     (2, Lt, DyadicPervasive, ("less than", '<')),
     /// Compare for less than or equal
@@ -535,7 +535,7 @@ primitive!(
     /// ex: ≤7 3
     /// ex: ≤2 [1 2 3]
     /// ex: ≤ [1 2 2] [1 2 3]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: ≤ {1 2_3 4_5_6} {1_2 3 4_5_6}
     (
         2,
@@ -552,7 +552,7 @@ primitive!(
     /// ex: >7 3
     /// ex: >2 [1 2 3]
     /// ex: > [1 2 2] [1 2 3]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: > {1 2_3 4_5_6} {1_2 3 4_5_6}
     (2, Gt, DyadicPervasive, ("greater than", '>')),
     /// Compare for greater than or equal
@@ -564,7 +564,7 @@ primitive!(
     /// ex: ≥7 3
     /// ex: ≥2 [1 2 3]
     /// ex: ≥ [1 2 2] [1 2 3]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: ≥ {1 2_3 4_5_6} {1_2 3 4_5_6}
     (
         2,
@@ -665,16 +665,20 @@ primitive!(
     ),
     /// Modulo values
     ///
-    /// The second value is divided by the first, and the remainder is returned.
+    /// The second value is divided by the first, and the "remainder" is returned.
     /// This is so you can think of `◿``x` as a single unit.
     /// ex: ◿10 27
     /// ex: ◿5 [3 7 14]
-    /// ex: ◿ [3 4 5] [10 10 10]
+    /// ex: ◿[3 4 5] [10 10 10]
     ///
-    /// The result is always non-negative:
-    /// ex: ◿ 4 ¯21
-    /// If you prefer the negative modulo instead of the remainder, you may use [under]:
-    /// ex: ⍜⊙⌵◿ 4 ¯21
+    /// The result will be negative iff the divisor is negative (note how
+    /// this is not C/Rust's `%` remainder function).
+    /// ex: ◿4 ¯21
+    /// ex: ◿¯4 ¯21
+    ///
+    /// If you prefer the more common `%` remainder (which uses truncating
+    /// division) instead of `◿`'smodulo behavior (which using flooring division):
+    /// ex: -×⍜⌵⌊◡÷ 4 ¯21
     (2, Modulo, DyadicPervasive, ("modulo", '◿')),
     /// Logical OR and greatest common divisor
     ///
@@ -707,7 +711,7 @@ primitive!(
     ///
     /// ex: ↧ 3 5
     /// ex: ↧ [1 4 2] [3 7 1]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: ↧ {1_2_3 "dog"} {1_4_5 "cat"}
     ///
     /// See also: [maximum]
@@ -716,7 +720,7 @@ primitive!(
     ///
     /// ex: ↥ 3 5
     /// ex: ↥ [1 4 2] [3 7 1]
-    /// Boxes compare lexicographically
+    /// Boxes compare lexicographically.
     /// ex: ↥ {1_2_3 "dog"} {1_4_5 "cat"}
     ///
     /// Uiua does not have dedicated boolean logical operators.
@@ -2788,7 +2792,7 @@ primitive!(
     ///
     /// [validate] is more useful when used in conjunction with [type checking](https://www.uiua.org/docs/experimental#type-checking).
     ///
-    /// If the first argument is a scalar character, then a scalar array with the specified scalar type will be validated. You can use a scalar character in the form of a built-in constant. These constants all format from a name.
+    /// If the first argument is a scalar character, then an array with the specified scalar type will be validated. You can use a scalar character in the form of a built-in constant. These constants all format from a name.
     /// - `ℝ` - `num` - Real numbers
     /// - `ℤ` - `int` - Integers
     /// - `ℕ` - `nat` - Natural numbers
@@ -2796,7 +2800,7 @@ primitive!(
     /// - `𝕌` - `char` - Unicode characters
     /// ex: # Experimental!
     ///   : ⊨ℝ 5.1
-    /// ex! # Experimental!
+    /// ex: # Experimental!
     ///   : ⊨ℝ [1 2 3]
     /// ex! # Experimental!
     ///   : ⊨ℝ "hey"
@@ -2838,10 +2842,10 @@ primitive!(
     /// Shape and type can both be validated by using a box array where the type is the first item and the rest of the items are axis sizes.
     /// ex: # Experimental!
     ///   : ⊨{𝕌 ∞ 2} ["ab""cd"]
-    /// To allow for any shape, specify no axis sizes.
-    /// ex: # Experimental!
+    /// To require a scalar, specify no axis sizes.
+    /// ex! # Experimental!
     ///   : ⊨{ℤ} 5
-    ///   : ⊨{ℤ} [3 ¯6 2]
+    ///   : ⊨{𝕌} @a
     ///   : ⊨{ℤ} [1_2 3_4]
     /// Type specifications can be nested to specify box arrays with given types inside the boxes.
     /// ex: # Experimental!
@@ -2877,6 +2881,10 @@ primitive!(
     ///   : ⊨⌞2⊨⌟3 [[1_2_3] [4_5_6]]
     /// ex! # Experimental!
     ///   : ⊨⌞2⊨⌟3 [[1_2 3_5] [5_6 7_8]]
+    /// [un][validate] gets the type specification of the value while preserving the value.
+    /// ex: # Experimental!
+    ///   : °⊨ "abcdef"
+    ///   : °⊨ [1_2_3 4_5_6]
     (2, Validate, Misc, ("validate", '⊨'), { experimental: true }),
     /// Memoize a function
     ///
@@ -3290,7 +3298,7 @@ primitive!(
     /// The value is the starting node.
     /// The first function should return 1 or 2 arrays of equal [length].
     /// - An array of the neighboring nodes must always be returned.
-    /// - An array of costs may be returned before the nodes array. If ommitted, all costs are assumed to be 1.
+    /// - An array of costs may be returned before the nodes array. If omitted, all costs are assumed to be 1.
     /// The second function should return whether or not the goal node has been reached.
     ///
     /// When called, [path] will consume any additional arguments its functions need.
@@ -3997,6 +4005,8 @@ sys_op! {
     ///
     /// Expects a string and returns a string.
     /// If the environment variable does not exist, an error is thrown.
+    ///
+    /// [anti][&var] will set an environment variable, akin to `export VARIABLE=VALUE`.
     (1, Var, Env, "&var", "environment variable"),
     /// Run a command and wait for it to finish
     ///
@@ -4393,7 +4403,7 @@ sys_op! {
     /// Uiua arrays can be passed to foreign functions as pointer-length pairs.
     /// To do this, specify the type of the list items followed by `:n`, where `n` is the index of the parameter that corresponds to the length.
     /// The interpreter will automatically pass the number of elements in the array to this parameter.
-    /// If we wave a C function `int sum(const int* arr, int len)` in a shared library `example.dll`, we can call it like this:
+    /// If we have a C function `int sum(const int* arr, int len)` in a shared library `example.dll`, we can call it like this:
     /// ex! # Experimental!
     ///   : Lib ← &ffi ⊂□"example.dll"
     ///   : Sum ← Lib {"int" "sum" "int:1" "int"}

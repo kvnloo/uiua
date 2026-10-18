@@ -11,10 +11,12 @@ use std::{
 };
 
 use crate::{
-    Assembly, BindingInfo, BindingKind, BindingMeta, CONSTANTS, CodeSpan, Compiler, Ident,
-    InputSrc, Inputs, LocalIndex, PreEvalMode, Primitive, SafeSys, Shape, Signature, Sp,
-    SubscriptToken, SysBackend, UiuaError, Value, ast::*, is_custom_glyph, parse,
-    parse::ident_modifier_args,
+    Assembly, Bind, BindingInfo, BindingKind, BindingMeta, CONSTANTS, CodeSpan, Compiler, Ident,
+    InputSrc, Inputs, PreEvalMode, Primitive, SafeSys, Shape, Signature, Sp, SubscriptToken,
+    SysBackend, UiuaError, Value,
+    ast::*,
+    is_custom_glyph,
+    parse::{ident_modifier_args, parse},
 };
 
 /// Kinds of span in Uiua code, meant to be used in the language server or other IDE tools
@@ -50,7 +52,10 @@ pub enum SpanKind {
     Subscript(Option<Primitive>, Option<SubscriptToken>),
     /// `obverse` primitive. Contains which inverses are set.
     Obverse(SetInverses),
-    ArgSetter(Option<EcoString>),
+    Local {
+        bind: bool,
+        uses: usize,
+    },
 }
 
 /// Documentation information for a binding
@@ -164,8 +169,12 @@ impl Spans {
 pub struct CodeMeta {
     /// A map of references to global bindings
     pub global_references: HashMap<CodeSpan, usize>,
-    /// A map of references to shadowable constants
+    /// A set of references to shadowable constants
     pub constant_references: HashSet<Sp<Ident>>,
+    /// A map of references to locals to their binding spans
+    pub local_references: HashMap<CodeSpan, CodeSpan>,
+    /// A map of local binding spans to their number of uses
+    pub local_uses: HashMap<CodeSpan, usize>,
     /// A map of identifiers to possible completions
     pub completions: HashMap<CodeSpan, Vec<Completion>>,
     /// Spans of functions and their signatures and whether they are explicit
@@ -175,7 +184,7 @@ pub struct CodeMeta {
     /// A map of inline macro functions to their number of arguments
     pub inline_macros: HashMap<CodeSpan, usize>,
     /// A map of top-level binding names to their indices
-    pub top_level_names: HashMap<Ident, LocalIndex>,
+    pub top_level_names: HashMap<Ident, Bind>,
     /// A map of the spans of top-level lines to values
     pub top_level_values: HashMap<CodeSpan, Vec<Value>>,
     /// A map of strand spans
@@ -611,6 +620,7 @@ impl Spanner {
                     }
                     spans.push(word.span.clone().sp(SpanKind::Number))
                 }
+                Word::BasedInt(_) => spans.push(word.span.clone().sp(SpanKind::Number)),
                 Word::Char(_) | Word::String(_) | Word::FormatString(_) => {
                     spans.push(word.span.clone().sp(SpanKind::String))
                 }
@@ -622,13 +632,27 @@ impl Spanner {
                     spans.extend((lines.iter()).map(|line| line.span.clone().sp(SpanKind::String)))
                 }
                 Word::Ref(r, chained) => {
-                    spans.extend(self.ref_spans(r));
-                    for comp in chained {
-                        spans.push(comp.dot_span.clone().sp(SpanKind::Delimiter));
-                        spans.extend(self.ref_spans(&comp.item));
+                    if r.path.is_empty()
+                        && chained.is_empty()
+                        && let Some(bind_span) = self.code_meta.local_references.get(&word.span)
+                    {
+                        // Local
+                        let uses = (self.code_meta.local_uses.get(bind_span).copied()).unwrap_or(0);
+                        spans.push((word.span.clone()).sp(SpanKind::Local { bind: false, uses }))
+                    } else {
+                        // Normal ident
+                        spans.extend(self.ref_spans(r));
+                        for comp in chained {
+                            spans.push(comp.dot_span.clone().sp(SpanKind::Delimiter));
+                            spans.extend(self.ref_spans(&comp.item));
+                        }
                     }
                 }
                 Word::IncompleteRef(path) => spans.extend(self.ref_path_spans(path)),
+                Word::Local(_) => {
+                    let uses = (self.code_meta.local_uses.get(&word.span).copied()).unwrap_or(0);
+                    spans.push((word.span.clone()).sp(SpanKind::Local { bind: true, uses }))
+                }
                 Word::Strand(items) => {
                     for i in 0..items.len() {
                         let word = &items[i];
@@ -818,6 +842,7 @@ impl Spanner {
                     }
                     spans.push(mac.ident.span.clone().sp(mac_delim_kind));
                 }
+                Word::Underscore => spans.push(word.span.clone().sp(SpanKind::Strand)),
             }
         }
         spans.retain(|sp| !sp.span.as_str(self.inputs(), str::is_empty));
@@ -1240,6 +1265,31 @@ mod server {
                         range: Some(uiua_span_to_lsp(&span, &doc.asm.inputs)),
                     }));
                 }
+            }
+            // Hovering an local
+            if let Some((span, orig_span, bind)) = (doc.code_meta.local_references.iter())
+                .find(|(span, _)| span.contains_line_col(line, col) && span.src == path)
+                .map(|(r, o)| (r, o, false))
+                .or_else(|| {
+                    (doc.code_meta.local_uses.keys())
+                        .find(|span| span.contains_line_col(line, col) && span.src == path)
+                        .map(|span| (span, span, true))
+                })
+            {
+                let mut value = if bind { "bind local" } else { "local" }.to_owned();
+                if let Some(uses) = doc.code_meta.local_uses.get(orig_span) {
+                    value.push_str(&format!(
+                        "\n\n{uses} use{}",
+                        if *uses == 1 { "" } else { "s" }
+                    ))
+                }
+                return Ok(Some(Hover {
+                    contents: HoverContents::Markup(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value,
+                    }),
+                    range: Some(uiua_span_to_lsp(span, &doc.asm.inputs)),
+                }));
             }
             // Hovering an inline function
             if let Some((span, sig_decl)) = (doc.code_meta.function_sigs.iter())
@@ -1701,7 +1751,7 @@ mod server {
                         stt
                     }
                     SpanKind::Placeholder(_) => SemanticTokenType::PARAMETER,
-                    SpanKind::ArgSetter(_) => MONADIC_FUNCTION_STT,
+                    SpanKind::Local { bind: true, .. } => MONADIC_FUNCTION_STT,
                     _ => continue,
                 };
                 let mut token_type = UIUA_SEMANTIC_TOKEN_TYPES
@@ -2043,6 +2093,22 @@ mod server {
                     })));
                 }
             }
+            // Check locals
+            for (name_span, orig_span) in &doc.code_meta.local_references {
+                if name_span.contains_line_col(line, col) && name_span.src == path {
+                    let uri = match &orig_span.src {
+                        InputSrc::Str(_) | InputSrc::Macro(_) => {
+                            params.text_document_position_params.text_document.uri
+                        }
+                        InputSrc::File(file) => path_to_uri(file)?,
+                        InputSrc::Literal(_) => continue,
+                    };
+                    return Ok(Some(GotoDefinitionResponse::Scalar(Location {
+                        uri,
+                        range: uiua_span_to_lsp(orig_span, &doc.asm.inputs),
+                    })));
+                }
+            }
             // Check import sources
             for (span, src) in &doc.code_meta.import_srcs {
                 if span.contains_line_col(line, col) && span.src == path {
@@ -2377,6 +2443,7 @@ mod server {
             };
             let (line, col) = lsp_pos_to_uiua(params.text_document_position.position, &doc.input);
             let path = uri_path(&params.text_document_position.text_document.uri);
+            // Binding references
             for (i, binfo) in doc.asm.bindings.iter().enumerate() {
                 if binfo.span.contains_line_col(line, col) && binfo.span.src == path {
                     let mut locations = Vec::new();
@@ -2395,6 +2462,19 @@ mod server {
                             }
                         }
                     }
+                    return Ok(Some(locations));
+                }
+            }
+            // Local references
+            let mut locations = Vec::new();
+            for (span, orig_span) in &doc.code_meta.local_references {
+                if orig_span.contains_line_col(line, col) && orig_span.src == path {
+                    let uri = match &span.src {
+                        InputSrc::File(file) => path_to_uri(file)?,
+                        _ => continue,
+                    };
+                    let range = uiua_span_to_lsp(span, &doc.asm.inputs);
+                    locations.push(Location { uri, range });
                     return Ok(Some(locations));
                 }
             }

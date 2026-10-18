@@ -319,6 +319,8 @@ pub static ANTI_PATTERNS: &[&dyn InvertPattern] = &[
     &AntiJoinPat,
     &NoUnder(AntiContraFlip),
     &AntiCustomPat,
+    &(Sys(SysOp::Var), AntiVar),
+    &(AntiVar, Sys(SysOp::Var)),
 ];
 
 pub static CONTRA_PATTERNS: &[&dyn InvertPattern] = &[
@@ -511,7 +513,7 @@ inverse!(UnByPat, input, asm, By, span, [f], {
         if let [Prim(Shape, span), Prim(Len, _)] = f.node.as_slice() {
             // Set rank
             let before = Node::from_iter([
-                Node::new_push(1),
+                Node::new_push(1, *span),
                 Prim(Sub, *span),
                 ImplPrim(Over, *span),
                 Prim(Shape, *span),
@@ -524,7 +526,7 @@ inverse!(UnByPat, input, asm, By, span, [f], {
                 Node::from_iter([PopUnder(2, *span), ImplPrim(UndoRerank, *span)]).sig_node()?;
             let adjust_rank = crate::CustomInverse {
                 normal: Ok(Node::from_iter([
-                    Node::new_push(1),
+                    Node::new_push(1, *span),
                     Prim(Sub, *span),
                     Prim(Rerank, *span),
                 ])
@@ -781,7 +783,7 @@ inverse!(ReduceFormatPat, input, _, Reduce, span, [f], {
         return Err(InversionError::ReduceFormat);
     }
     let inv = Node::from_iter([
-        Node::new_push(parts[1].as_str()),
+        Node::new_push(parts[1].as_str(), span),
         ImplMod(
             SplitByKeepEmpty,
             eco_vec![Prim(Box, span).sig_node()?],
@@ -906,7 +908,7 @@ inverse!(JoinPat, input, asm, {
         let prim = if count <= 1 {
             UnJoin
         } else {
-            node.push(Push(count.into()));
+            node.push(Push(count.into(), join_span));
             UnJoinShape
         };
         node.push(ImplPrim(prim, join_span));
@@ -1026,7 +1028,7 @@ inverse!(InsertPat, input, asm, {
         ImplPrim(Over, span),
         ImplPrim(Over, span),
         Prim(Has, span),
-        Node::new_push(1),
+        Node::new_push(1, span),
         ImplPrim(MatchPattern, span),
         ImplPrim(Over, span),
         ImplPrim(Over, span),
@@ -1149,7 +1151,9 @@ inverse!(DupPat, input, asm, Prim(Dup, dup_span), {
     dbgln!("inverse dyadic part: {dyadic_part:?}");
     let monadic_inv = un_inverse(monadic_part, asm)?;
     let inverse = match *dyadic_part {
-        [Prim(Add, span)] => Node::from_iter([monadic_inv, Node::new_push(2), Prim(Div, span)]),
+        [Prim(Add, span)] => {
+            Node::from_iter([monadic_inv, Node::new_push(2, span), Prim(Div, span)])
+        }
         [Prim(Mul, span)] => {
             let mut inv = Prim(Sqrt, span);
             if !monadic_inv.is_empty() {
@@ -1494,7 +1498,9 @@ inverse!(ImplPrimPat, input, _, ImplPrim(prim, span), {
         UnClip => Prim(Sys(SysOp::Clip), span),
         Retropose => ImplPrim(Retropose, span),
         MvImpl(mode) => ImplPrim(UnMv(mode), span),
+        ValidateImpl(_) => ImplPrim(UnValidate, span),
         UnMv(mode) => ImplPrim(MvImpl(mode), span),
+        UnValidate => ImplPrim(ValidateImpl(None), span),
         StackN { n, inverse } => ImplPrim(
             StackN {
                 n,

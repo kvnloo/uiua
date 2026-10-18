@@ -1,23 +1,24 @@
 # Uiua Todo
 
-# 0.19
-
 # 0.20
-- `uiua shell`
-- Non-decimal numeric literals
+
 - `switch` subscripts
 - `fold` subscripts
-- Useful behavior for noadic functions in `rows`, `inventory`, `table`, and `stencil`
-- Chained access rework
-- Constrained non-tacit bindings
 - Document array summary notation
+- Maybe:
+  - Special glyph for labels
+  - Syntax-aware strings/format strings
+  - `uiua shell`
+  - Useful behavior for noadic functions in `rows`, `inventory`, `table`, and `stencil`
 
 # 1.0 - 202?-??-??
+
 - Proofread and update all docs and tutorial
 - Self-host the Uiua site
 - Stabilize `&ffi`
 
 ## Planned Features
+
 Features that are planned to be implemented in the future.
 
 - Stackless execution trees?
@@ -45,6 +46,7 @@ Features that are planned to be implemented in the future.
       - `&fperm`
 
 ## Potential Features
+
 Features that could be implemented, but are not currently planned.
 
 - Channels

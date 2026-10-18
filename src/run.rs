@@ -13,14 +13,13 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, Sender, TryRecvError};
-use ecow::EcoVec;
 use parking_lot::Mutex;
 use thread_local::ThreadLocal;
 use threadpool::ThreadPool;
 
 use crate::{
-    Array, Assembly, BindingKind, BindingMeta, Boxed, CodeSpan, Compiler, Function, FunctionId,
-    Ident, Inputs, IntoSysBackend, LocalIndex, Node, Primitive, Report, SafeSys, SigNode,
+    Array, Assembly, Bind, BindingKind, BindingMeta, Boxed, CodeSpan, Compiler, Function,
+    FunctionId, Ident, Inputs, IntoSysBackend, Node, Primitive, Report, SafeSys, SigNode,
     Signature, Span, StackArg, SysBackend, TraceFrame, UiuaError, UiuaErrorKind, UiuaResult,
     VERSION, Value,
     algorithm::{self, validate_size_impl},
@@ -48,7 +47,7 @@ pub(crate) struct Runtime {
     /// The call stack
     pub(crate) call_stack: Vec<StackFrame>,
     /// The local stack
-    pub(crate) local_stack: EcoVec<(usize, Value)>,
+    pub(crate) locals: Vec<StackedLocal>,
     /// The stack for tracking recursion points
     recur_stack: Vec<usize>,
     /// The fill stack
@@ -124,6 +123,11 @@ pub(crate) struct StackFrame {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct StackedLocal {
+    pub value: Option<Value>,
+}
+
+#[derive(Debug, Clone)]
 struct Channel {
     pub send: Sender<Value>,
     pub recv: Receiver<Value>,
@@ -196,7 +200,7 @@ impl Default for Runtime {
                 id: Some(FunctionId::Main),
                 ..Default::default()
             }],
-            local_stack: EcoVec::new(),
+            locals: Vec::new(),
             recur_stack: Vec::new(),
             fill_stack: Vec::new(),
             fill_boundary_stack: Vec::new(),
@@ -504,7 +508,7 @@ impl Uiua {
                 self.with_prim_span(span, Some(prim), |env| run_prim_mod(&prim, args, env))
             }
             Node::ImplMod(prim, args, span) => self.with_span(span, |env| prim.run_mod(args, env)),
-            Node::Push(val) => {
+            Node::Push(val, _) => {
                 self.rt.stack.push(val);
                 Ok(())
             }
@@ -574,7 +578,7 @@ impl Uiua {
                 env.call(&func)
             }),
             Node::BindGlobal { span, index } => {
-                let local = LocalIndex {
+                let bind = Bind {
                     index,
                     public: false,
                 };
@@ -588,7 +592,7 @@ impl Uiua {
                 value.try_shrink();
                 // Binding is a constant
                 self.asm
-                    .bind_const(local, Some(value), span, BindingMeta::default());
+                    .bind_const(bind, Some(value), span, BindingMeta::default());
                 Ok(())
             }
             Node::Array {
@@ -719,6 +723,42 @@ impl Uiua {
                 self.rt.call_stack.last_mut().unwrap().track_caller = true;
                 self.exec(inner)
             }),
+            Node::BindLocal { span } => self.with_span(span, |env| {
+                let val = env.pop(1)?;
+                env.rt.locals.push(StackedLocal { value: Some(val) });
+                Ok(())
+            }),
+            Node::GetLocal { index, take, span } => self.with_span(span, |env| {
+                let len = env.rt.locals.len();
+                if len <= index {
+                    return Err(env.error(format!(
+                        "No local for index {index}. This is a bug in the interpreter."
+                    )));
+                }
+                let im = &mut env.rt.locals[len - index - 1];
+                let val = if take {
+                    im.value.take()
+                } else {
+                    im.value.as_ref().cloned()
+                }
+                .ok_or_else(|| {
+                    env.error("Local was already used. This is a bug in the interpreter.")
+                })?;
+                env.push(val);
+                Ok(())
+            }),
+            Node::PopLocals { n } => {
+                if self.rt.locals.len() < n {
+                    Err(self.error(format!(
+                        "Can't pop {n} locals when there are only {}. \
+                        This is a bug in the interpreter.",
+                        self.rt.locals.len()
+                    )))
+                } else {
+                    self.rt.locals.truncate(self.rt.locals.len() - n);
+                    Ok(())
+                }
+            }
         };
         #[allow(clippy::print_stdout)]
         if self.rt.time_instrs {
@@ -1435,7 +1475,7 @@ impl Uiua {
                     .drain(self.rt.stack.len() - f.sig.args()..)
                     .collect(),
                 under_stack: Vec::new(),
-                local_stack: self.rt.local_stack.clone(),
+                locals: self.rt.locals.clone(),
                 fill_stack: Vec::new(),
                 fill_boundary_stack: Vec::new(),
                 unfill_stack: Vec::new(),

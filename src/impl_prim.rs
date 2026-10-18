@@ -157,6 +157,7 @@ impl_primitive!(
     (1(2)[1], UnPartition),
     (1(2), UnReshape),
     (1, UnSort, Impure),
+    (1(2), UnValidate),
     (1, UnHsv),
     (1, UnOklch),
     (1, UnJson),
@@ -178,6 +179,7 @@ impl_primitive!(
     (0, UnRawMode, Impure),
     (0, UnChangeDirectory, Impure),
     (1(0), UnClip, Mutating),
+    (2(0), AntiVar, Mutating),
     // Unders
     (1, UndoFix),
     (2, UndoShape),

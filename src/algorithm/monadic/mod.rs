@@ -936,6 +936,8 @@ impl Value {
                 |a, b| a.undo_first(b, env).map(Into::into),
                 |a, b| a.undo_first(b, env).map(Into::into),
                 |a, b| a.undo_first(b, env).map(Into::into),
+                #[cfg(feature = "ga")]
+                |a, b| a.undo_first(b, env).map(Into::into),
                 |a, b| {
                     env.error(format!(
                         "Cannot unfirst {} into {}",
@@ -954,6 +956,8 @@ impl Value {
                 |a, b| a.undo_last(b, env).map(Into::into),
                 |a, b| a.undo_last(b, env).map(Into::into),
                 |a, b| a.undo_last(b, env).map(Into::into),
+                |a, b| a.undo_last(b, env).map(Into::into),
+                #[cfg(feature = "ga")]
                 |a, b| a.undo_last(b, env).map(Into::into),
                 |a, b| {
                     env.error(format!(
@@ -2408,10 +2412,17 @@ impl Array<f64> {
             .max_by(|a, b| a.total_cmp(b))
             .expect("Empty case already checked");
 
+        let limit = max.sqrt().floor() as usize;
+
+        let mut is_prime = vec![true; limit + 1];
+
         let mut primes = vec![2u32];
-        for n in 3..=max.sqrt().floor() as u32 {
-            if primes.iter().all(|p| n % p != 0) {
-                primes.push(n);
+        for n in (3..=limit).step_by(2) {
+            if is_prime[n] {
+                primes.push(n as u32);
+                for m in (n * n..=limit).step_by(2 * n) {
+                    is_prime[m] = false;
+                }
             }
         }
 
@@ -2419,8 +2430,8 @@ impl Array<f64> {
             self.shape.clone(),
             self.data.iter().map(|n| {
                 for prime in &primes {
-                    if (*n as u32).is_multiple_of(*prime) {
-                        if *n as u32 == *prime {
+                    if (*n as u64).is_multiple_of(*prime as u64) {
+                        if *n as u64 == *prime as u64 {
                             return 1u8;
                         }
                         return 0u8;
@@ -2437,9 +2448,7 @@ impl Array<f64> {
             check_number(n, env, u64::MAX as f64)?;
 
             let mut n = n as u64; // note: u64, not usize
-
             let mut divisors = eco_vec![];
-
             while n.is_multiple_of(2) {
                 n /= 2;
                 divisors.push(2.0f64);
@@ -2600,6 +2609,7 @@ impl Array<f64> {
             rgb[2] = v;
         }
         self.meta.take_sorted_flags();
+        self.meta.take_value_flags();
         self.validate();
         Ok(self)
     }
@@ -2940,13 +2950,6 @@ impl Value {
                 hour += minute / 60.0;
                 minute = 60.0 + (minute % 60.0);
             }
-            if hour >= 24.0 {
-                day += (hour / 24.0).floor();
-                hour %= 24.0;
-            } else if hour < 0.0 {
-                day += hour / 24.0;
-                hour = 24.0 + (hour % 24.0);
-            }
             let day_delta = if day >= 28.0 {
                 let delta = day - 27.0;
                 day -= delta;
@@ -2958,6 +2961,13 @@ impl Value {
             } else {
                 day.fract()
             };
+            if hour >= 24.0 {
+                day += (hour / 24.0).floor();
+                hour %= 24.0;
+            } else if hour < 0.0 {
+                day += hour / 24.0;
+                hour = 24.0 + (hour % 24.0);
+            }
             if month >= 12.0 {
                 year += (month / 12.0).floor();
                 month %= 12.0;

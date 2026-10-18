@@ -1,7 +1,31 @@
 # Uiua Changelog
 
 Uiua is not yet stable.
-<!--This version is not yet released. If you are reading this on the website, then these changes are live here.-->
+
+## 0.20.0 - 2026-??-??
+This version is not yet released. If you are reading this on the website, then these changes are live here.
+### Language
+- Add based integer literals ([numbers tutorial](https://uiua.org/tutorial/Types#numbers))
+- Add [`un °`](https://uiua.org/docs/un)[`validate ⊨`](https://uiua.org/docs/validate) for getting the type spec of an array.
+- The formatter will now format text inside comments and strings that is surrounded with `\\(...)`.
+- Add [`anti ⌝`](https://www.uiua.org/docs/anti)[`&var`](https://www.uiua.org/docs/%26var) for setting environment variables.
+### Interpreter
+- The pretty printer now shows simple box lists using `{}`s and spaces instead of box drawing characters.
+  - This make reading simple box arrays much easier
+- Add aliases
+  - `sum`
+  - `prod`
+  - `csc`
+  - `sec`
+  - `cot`
+  - `avg`
+### Website
+- Separate [Aliases](https://uiua.org/docs/aliases) page from the [Idioms](https://uiua.org/docs/idioms) page.
+
+## 0.19.1 - 2026-09-03
+### Interpreter
+- Fix a bug related to optimizations on arrays flagged as boolean
+- Fix compilation with `--no-default-features`
 
 ## 0.19.0 - 2026-08-26
 ### Language
