@@ -2512,6 +2512,136 @@ impl Value {
 mod matrix_div_regression_tests {
     use super::*;
 
+    fn assert_solves(divisor: &Array<f64>, rhs: &Array<f64>, expected: &[f64]) {
+        let result = rhs.matrix_div(divisor, &Uiua::with_safe_sys()).unwrap();
+        assert_eq!(result.shape, rhs.shape);
+        assert_eq!(result.data.len(), expected.len());
+        for (&actual, &expected) in result.data.iter().zip(expected) {
+            assert!(actual.is_finite());
+            assert!((actual - expected).abs() <= 1e-8 * expected.abs().max(1.0));
+        }
+        // Independently reconstruct A X, rather than relying on matrix_mul or
+        // the solver's indexing helpers as the oracle.
+        let columns = rhs.shape[1];
+        for row in 0..divisor.shape[0] {
+            for column in 0..columns {
+                let actual: f64 = (0..divisor.shape[1])
+                    .map(|k| {
+                        divisor.data[row * divisor.shape[1] + k] * result.data[k * columns + column]
+                    })
+                    .sum();
+                let expected = rhs.data[row * columns + column];
+                assert!((actual - expected).abs() <= 1e-8 * expected.abs().max(1.0));
+            }
+        }
+    }
+
+    #[test]
+    fn multiple_rhs_columns_survive_later_pivot_with_nontrivial_lower_factor() {
+        let divisor = Array::new(
+            [3, 3],
+            eco_vec![4.0, 1.0, 0.0, 2.0, 0.0, 1.0, 1.0, 3.0, 1.0],
+        );
+        let rhs = Array::new(
+            [3, 4],
+            eco_vec![6.0, 7.0, 12.0, 19.0, 1.0, 8.0, 8.0, 8.0, 6.0, 3.0, 5.0, 13.0],
+        );
+        assert_solves(
+            &divisor,
+            &rhs,
+            &[1.0, 2.0, 3.0, 4.0, 2.0, -1.0, 0.0, 3.0, -1.0, 4.0, 2.0, 0.0],
+        );
+    }
+
+    #[test]
+    fn near_singular_system_is_consistent_across_uniform_scaling() {
+        let delta = 2.0_f64.powi(-40);
+        for scale in [1e-20, 1.0, 1e20] {
+            let divisor = Array::new(
+                [2, 2],
+                eco_vec![scale, scale, scale, (1.0 + delta) * scale],
+            );
+            // X = [1, 1] avoids introducing an unrelated ill-conditioned
+            // rounding error while still requiring a small second pivot.
+            let rhs = Array::new([2, 1], eco_vec![2.0 * scale, (2.0 + delta) * scale]);
+            let result = rhs.matrix_div(&divisor, &Uiua::with_safe_sys()).unwrap();
+            assert_eq!(result.shape.as_slice(), &[2, 1]);
+            for &value in result.data.iter() {
+                assert!(value.is_finite());
+                assert!((value - 1.0).abs() < 0.001);
+            }
+        }
+    }
+
+    #[test]
+    fn singular_and_rank_deficient_divisors_are_errors() {
+        let rhs = Array::new([2, 1], eco_vec![1.0, 2.0]);
+        for values in [
+            eco_vec![0.0, 0.0, 0.0, 0.0],
+            eco_vec![1.0, 2.0, 2.0, 4.0],
+            eco_vec![0.0, 1.0, 0.0, 2.0],
+        ] {
+            let divisor = Array::new([2, 2], values);
+            assert!(rhs.matrix_div(&divisor, &Uiua::with_safe_sys()).is_err());
+        }
+    }
+
+    #[test]
+    fn invalid_ranks_and_incompatible_shapes_are_errors() {
+        let env = Uiua::with_safe_sys();
+        let identity = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 1], eco_vec![1.0, 2.0]);
+        for invalid in [
+            Array::new([], eco_vec![1.0]),
+            Array::new([2], eco_vec![1.0, 2.0]),
+            Array::new([1, 2, 1], eco_vec![1.0, 2.0]),
+        ] {
+            assert!(invalid.matrix_div(&identity, &env).is_err());
+            assert!(rhs.matrix_div(&invalid, &env).is_err());
+        }
+        let nonsquare = Array::new([2, 3], eco_vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
+        assert!(rhs.matrix_div(&nonsquare, &env).is_err());
+        let wrong_rows = Array::new([1, 3], eco_vec![1.0, 2.0, 3.0]);
+        assert!(wrong_rows.matrix_div(&identity, &env).is_err());
+        let empty_rows = Array::new([0, 3], EcoVec::<f64>::new());
+        assert!(empty_rows.matrix_div(&identity, &env).is_err());
+    }
+
+    #[test]
+    fn empty_square_divisor_preserves_empty_rhs_shape() {
+        let divisor = Array::new([0, 0], EcoVec::<f64>::new());
+        for columns in [0, 1, 3] {
+            let rhs = Array::new([0, columns], EcoVec::<f64>::new());
+            assert_solves(&divisor, &rhs, &[]);
+        }
+    }
+
+    #[test]
+    fn one_by_one_divisor_supports_multiple_rhs_columns() {
+        let divisor = Array::new([1, 1], eco_vec![-2.0]);
+        let rhs = Array::new([1, 3], eco_vec![4.0, 0.0, -6.0]);
+        assert_solves(&divisor, &rhs, &[-2.0, 0.0, 3.0]);
+    }
+
+    #[test]
+    fn nonfinite_entries_in_either_operand_are_errors() {
+        let env = Uiua::with_safe_sys();
+        let identity = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 1], eco_vec![1.0, 2.0]);
+        for nonfinite in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for position in 0..4 {
+                let mut divisor = identity.clone();
+                divisor.data.make_mut()[position] = nonfinite;
+                assert!(rhs.matrix_div(&divisor, &env).is_err());
+            }
+            for position in 0..2 {
+                let mut invalid_rhs = rhs.clone();
+                invalid_rhs.data.make_mut()[position] = nonfinite;
+                assert!(invalid_rhs.matrix_div(&identity, &env).is_err());
+            }
+        }
+    }
+
     #[test]
     fn rectangular_rhs_preserves_shape_and_pivoted_rows() {
         let env = Uiua::with_safe_sys();

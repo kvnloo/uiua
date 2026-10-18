@@ -406,3 +406,23 @@ I,4 = slftab= ran4
 ⍤⤙≍B ⁅₂⌝⍜⍉⊞(/+×) ∩⍉ I,4 B
 ⍤⤙≍I,4 ⁅₂ ⊞(/+×)⊙⍉ A ⌝⍜⍉⊞(/+×) ∩⍉ A I,4
 ⍤⤙≍I,4 ⁅₂ ⊞(/+×)⊙⍉ B ⌝⍜⍉⊞(/+×) ∩⍉ B I,4
+
+# Rectangular matrix division: fixed independent solution and A X ≈ B.
+Solve ← ⌝⍜⍉⊞(/+×) ∩⍉
+PivotA ← [4_1_0 2_0_1 1_3_1]
+PivotB ← [6_7_12_19 1_8_8_8 6_3_5_13]
+PivotX ← Solve PivotB PivotA
+⍤⤙≍ 3_4 △ PivotX
+⍤⤙≍ [1_2_3_4 2_¯1_0_3 ¯1_4_2_0] ⁅₈ PivotX
+⍤ <0.00000001 /↥ ♭⌵- PivotB ⊞(/+×)⊙⍉ PivotA PivotX
+⍤⤙≍ [3_4] ⁅₈ Solve [6_8] [↯1 2]
+⍤⤙≍ 0_3 △ Solve (↯0_3 []) (↯0_0 [])
+⍤⤙≍ 2_0 △ Solve (↯2_0 []) I,2
+
+# Errors are observable outcomes, not assertions about diagnostic wording.
+⍤⤙≍ 1 ⍣(0◌Solve)1 [1_0 2_0] [1_2 2_4]
+⍤⤙≍ 1 ⍣(0◌Solve)1 [1_0 2_0] [1_0_0 0_1_0]
+⍤⤙≍ 1 ⍣(0◌Solve)1 [1_2_3] I,2
+⍤⤙≍ 1 ⍣(0◌Solve)1 1_2 I,2
+⍤⤙≍ 1 ⍣(0◌Solve)1 [1_0 2_0] [NaN_0 0_1]
+⍤⤙≍ 1 ⍣(0◌Solve)1 [∞_0 2_0] I,2
