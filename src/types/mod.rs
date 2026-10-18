@@ -81,11 +81,14 @@ fn check_scalar(spec: Scalar, ch: &mut Type) -> TypeResult {
             }
         }
     } else if let Scalar::Or(variants) = &spec {
-        variants
-            .iter()
-            .cloned()
-            .find_map(|variant_spec| validate(variant_spec, ch, None).ok())
-            .ok_or(TypeError::ScalarMismatch(spec, ch.scalar.clone()))?;
+        // A failed variant must not leave partial refinements on the checked type.
+        let candidate = variants.iter().find_map(|variant_spec| {
+            let mut candidate = ch.clone();
+            validate(variant_spec.clone(), &mut candidate, None)
+                .ok()
+                .map(|_| candidate)
+        });
+        *ch = candidate.ok_or_else(|| TypeError::ScalarMismatch(spec, ch.scalar.clone()))?;
     } else if !spec.superset_of(&ch.scalar) {
         return Err(TypeError::ScalarMismatch(spec, ch.scalar.clone()));
     }
@@ -1614,7 +1617,7 @@ impl<'a> TypeEnv<'a> {
                 .collect::<Result<_, _>>()?,
             (a, TypeVal::Or(b)) => b
                 .into_iter()
-                .map(|b| self.dyadic_pervasive_inner(f.clone(), f64.clone(), b, a.clone()))
+                .map(|b| self.dyadic_pervasive_inner(f.clone(), f64.clone(), a.clone(), b))
                 .collect::<Result<_, _>>()?,
             (a, b) => {
                 let (a, b) = (a.ty(), b.ty());
