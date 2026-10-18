@@ -2404,3 +2404,21 @@ impl Value {
         Ok((num, denom))
     }
 }
+
+#[cfg(test)]
+mod fma_base_regression_tests {
+    use super::*;
+
+    #[test]
+    fn positive_fractional_base_near_multiple_is_euclidean() {
+        let env = Uiua::with_safe_sys();
+        let input = Array::new([], eco_vec![11.0]);
+        let digits = input.base_scalar(1.1, &env).unwrap();
+        assert!(!digits.data.is_empty());
+        assert_eq!(digits.data[0], 11.0_f64.rem_euclid(1.1));
+        assert!(
+            digits.data.iter().all(|&d| d >= 0.0 && d < 1.1),
+            "positive-base digits must be in [0, base)"
+        );
+    }
+}
