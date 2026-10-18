@@ -232,3 +232,12 @@ G
 ⨬∘⊢ ¤ 0_1_0 [0_1 2_3 4_5]
 
 ♭ °⊸△ ▽64 10 1
+
+# Nested under: empty input fails before the middle function.
+⍜⍜⊢(¯⌵)(↘1) []
+
+# Nested under: invalid arithmetic fails while context is saved.
+⍜⍜⊢(¯⌵)(+1) "Hello"
+
+# Nested under: the middle function removes rows needed by the inverse.
+⍜⍜(⊏0_1)⌵(↘3) 1_2_3

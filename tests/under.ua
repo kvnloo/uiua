@@ -567,3 +567,11 @@ $ Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo
 $ Never gonna give you up
 $ ⍤⤙≍ ⍚⊃⍜⍜◴⊛⇌⍜⊛⇌ °/$"_\n_" 
 ⍤⤙≍ ⍚⊃⍜⍜◴⊛⇌⍜⊛⇌ °/$"_\n_" 
+
+# Nested under errors must not corrupt the context of subsequent calls.
+◌⍣(⍜⍜⊢(¯⌵)(↘1))⋅∘ []
+⍤⤙≍ "Ello" ⍜⍜⊢(¯⌵)(↘1) "Hello"
+◌⍣(⍜⍜⊢(¯⌵)(+1))⋅∘ "Hello"
+⍤⤙≍ "Ello" ⍜⍜⊢(¯⌵)(↘1) "Hello"
+◌⍣(⍜⍜(⊏0_1)⌵(↘3))⋅∘ 1_2_3
+⍤⤙≍ 1_2_3 ⍜⍜(⊏0_1)⌵∘ 1_2_3
