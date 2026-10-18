@@ -2565,7 +2565,7 @@ mod matrix_div_regression_tests {
             // rounding error while still requiring a small second pivot.
             let rhs = Array::new([2, 1], eco_vec![2.0 * scale, (2.0 + delta) * scale]);
             let result = rhs.matrix_div(&divisor, &Uiua::with_safe_sys()).unwrap();
-            assert_eq!(result.shape.as_slice(), &[2, 1]);
+            assert_eq!(&result.shape[..], &[2, 1]);
             for &value in result.data.iter() {
                 assert!(value.is_finite());
                 assert!((value - 1.0).abs() < 0.001);
@@ -2649,7 +2649,7 @@ mod matrix_div_regression_tests {
         let divisor = Array::new([2, 2], eco_vec![0.0, 1.0, 1.0, 0.0]);
         let rhs = Array::new([2, 3], eco_vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         let result = rhs.matrix_div(&divisor, &env).unwrap();
-        assert_eq!(result.shape.as_slice(), &[2, 3]);
+        assert_eq!(&result.shape[..], &[2, 3]);
         assert_eq!(result.data.as_slice(), &[4.0, 5.0, 6.0, 1.0, 2.0, 3.0]);
     }
 
@@ -2659,7 +2659,7 @@ mod matrix_div_regression_tests {
         let divisor = Array::new([2, 2], eco_vec![1e-20, 0.0, 0.0, 2e-20]);
         let rhs = Array::new([2, 1], eco_vec![3e-20, 8e-20]);
         let result = rhs.matrix_div(&divisor, &env).unwrap();
-        assert_eq!(result.shape.as_slice(), &[2, 1]);
+        assert_eq!(&result.shape[..], &[2, 1]);
         assert!((result.data[0] - 3.0).abs() < 1e-12);
         assert!((result.data[1] - 4.0).abs() < 1e-12);
     }
@@ -2678,7 +2678,7 @@ mod matrix_div_regression_tests {
         let divisor = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
         let rhs = Array::new([2, 0], EcoVec::<f64>::new());
         let result = rhs.matrix_div(&divisor, &env).unwrap();
-        assert_eq!(result.shape.as_slice(), &[2, 0]);
+        assert_eq!(&result.shape[..], &[2, 0]);
         assert!(result.data.is_empty());
     }
 
@@ -2688,7 +2688,7 @@ mod matrix_div_regression_tests {
         let identity = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
         let rhs = Array::new([2, 1], eco_vec![7.0, 9.0]);
         let result = rhs.matrix_div(&identity, &env).unwrap();
-        assert_eq!(result.shape.as_slice(), &[2, 1]);
+        assert_eq!(&result.shape[..], &[2, 1]);
         assert_eq!(result.data.as_slice(), &[7.0, 9.0]);
     }
 }
