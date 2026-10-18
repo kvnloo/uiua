@@ -399,16 +399,16 @@ I,2 = slftab= ran2
 I,4 = slftab= ran4
 ⍤⤙≍ApB ⁅₂⊞(/+×)⊙⍉ A B # Matmul
 ⍤⤙≍BpA ⁅₂⊞(/+×)⊙⍉ B A
-# (Matdiv only triggers with ⌝⍜⍉⊞(/+×) instead of the arguably-more-correct ⌝⍜⊙⍉⊞(/+×), so these tests pre-pre-transpose to get around that until that's fixed)
-⍤⤙≍AdB ⁅₂⌝⍜⍉⊞(/+×) ∩⍉ A B # Matdiv
-⍤⤙≍BdA ⁅₂⌝⍜⍉⊞(/+×) ∩⍉ B A
-⍤⤙≍A ⁅₂⌝⍜⍉⊞(/+×) ∩⍉ I,4 A
-⍤⤙≍B ⁅₂⌝⍜⍉⊞(/+×) ∩⍉ I,4 B
-⍤⤙≍I,4 ⁅₂ ⊞(/+×)⊙⍉ A ⌝⍜⍉⊞(/+×) ∩⍉ A I,4
-⍤⤙≍I,4 ⁅₂ ⊞(/+×)⊙⍉ B ⌝⍜⍉⊞(/+×) ∩⍉ B I,4
+# Matrix left division takes the RHS first and the square divisor second.
+Solve ← ⌝⍜⍉⊞(/+×)
+⍤⤙≍AdB ⁅₂ Solve B A
+⍤⤙≍BdA ⁅₂ Solve A B
+⍤⤙≍A ⁅₂ Solve A I,4
+⍤⤙≍B ⁅₂ Solve B I,4
+⍤⤙≍I,4 ⁅₂ ⊞(/+×)⊙⍉ A Solve I,4 A
+⍤⤙≍I,4 ⁅₂ ⊞(/+×)⊙⍉ B Solve I,4 B
 
 # Rectangular matrix division: fixed independent solution and A X ≈ B.
-Solve ← ⌝⍜⍉⊞(/+×) ∩⍉
 PivotA ← [4_1_0 2_0_1 1_3_1]
 PivotB ← [6_7_12_19 1_8_8_8 6_3_5_13]
 PivotX ← Solve PivotB PivotA

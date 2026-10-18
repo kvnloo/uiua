@@ -2630,12 +2630,12 @@ mod matrix_div_regression_tests {
         for nonfinite in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             for position in 0..4 {
                 let mut divisor = identity.clone();
-                divisor.data.make_mut()[position] = nonfinite;
+                divisor.data.as_mut_slice()[position] = nonfinite;
                 assert!(rhs.matrix_div(&divisor, &env).is_err());
             }
             for position in 0..2 {
                 let mut invalid_rhs = rhs.clone();
-                invalid_rhs.data.make_mut()[position] = nonfinite;
+                invalid_rhs.data.as_mut_slice()[position] = nonfinite;
                 assert!(invalid_rhs.matrix_div(&identity, &env).is_err());
             }
         }
