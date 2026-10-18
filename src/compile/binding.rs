@@ -92,14 +92,26 @@ impl Compiler {
                         types: old_meta.types,
                         external: old_meta.external || meta.external,
                     };
-                    let bind = Bind {
+                    let new_bind = Bind {
                         public,
                         index: self.next_bindex,
                     };
                     self.next_bindex += 1;
+                    if let Some(sig) = kind.sig()
+                        && sig == (0, 1)
+                    {
+                        let spandex = self.add_span(span.clone());
+                        self.asm.root.extend([
+                            Node::CallGlobal(bind.index, sig),
+                            Node::BindGlobal {
+                                index: new_bind.index,
+                                span: spandex,
+                            },
+                        ]);
+                    }
                     self.asm
-                        .add_binding_at(bind, kind, Some(span.clone()), meta);
-                    bind
+                        .add_binding_at(new_bind, kind, Some(span.clone()), meta);
+                    new_bind
                 } else {
                     // If there is no comment, it's a simple name insertion
                     Bind { public, ..bind }
@@ -414,23 +426,37 @@ impl Compiler {
                 .insert(name.clone(), self.asm.functions.len());
         }
 
-        // Apply doc comment
-        if let Some(comment) = &meta.comment
-            && let Some(sig) = &comment.sig
-        {
-            match sig {
-                Ok(sig) => self.apply_node_comment(&mut node, sig, &name, span),
-                Err(e) => {
-                    self.emit_diagnostic(e.message.clone(), DiagnosticKind::Warning, span.clone())
-                }
-            }
-        }
-
         // Resolve signature
         match node.sig() {
             Ok(mut sig) => {
                 let binds_above = !in_function && node.is_empty() && no_code_words;
-                if !binds_above {
+                if binds_above {
+                    // Binding binds the value above
+                    let mut has_stack_value = false;
+                    for i in 0..self.asm.root.len() {
+                        let nodes = &self.asm.root[self.asm.root.len() - 1 - i..];
+                        let Ok(sig) = nodes_sig(nodes) else {
+                            break;
+                        };
+                        if sig.outputs() > 0 {
+                            has_stack_value = true;
+                            break;
+                        }
+                    }
+                    if has_stack_value {
+                        sig = (0, 1).into();
+                    }
+                    if let Some(Node::Push(..)) = self.asm.root.last() {
+                        // Actually binds the constant
+                        node.extend(self.asm.root.pop());
+                    } else if has_stack_value {
+                        self.asm.root.push(Node::BindGlobal {
+                            index: bind.index,
+                            span: spandex,
+                        });
+                        node = Node::CallGlobal(bind.index, sig);
+                    }
+                } else {
                     // Validate signature
                     if let Some(declared_sig) = &binding.signature {
                         if self_referenced && declared_sig.value.outputs() > 10 {
@@ -446,6 +472,20 @@ impl Compiler {
                             node = self.force_sig(node, declared_sig.value, &declared_sig.span)?;
                             sig = declared_sig.value;
                         }
+                    }
+                }
+
+                // Apply doc comment
+                if let Some(comment) = &meta.comment
+                    && let Some(sig) = &comment.sig
+                {
+                    match sig {
+                        Ok(sig) => self.apply_node_comment(&mut node, sig, &name, span),
+                        Err(e) => self.emit_diagnostic(
+                            e.message.clone(),
+                            DiagnosticKind::Warning,
+                            span.clone(),
+                        ),
                     }
                 }
 
@@ -493,7 +533,7 @@ impl Compiler {
                     // Binding is a constant
                     let val = if let [Node::Push(v, _)] = node.as_slice() {
                         Some(v.clone())
-                    } else if node.is_pure(&self.asm) {
+                    } else if !node.is_pure(&self.asm) {
                         match self.comptime_node(&node) {
                             Ok(Some(vals)) => vals.into_iter().next(),
                             Ok(None) => None,
@@ -518,45 +558,6 @@ impl Compiler {
                         }
                         // Add binding instrs to root
                         self.asm.root.push_no_inline(node);
-                        self.asm.root.push(Node::BindGlobal {
-                            index: bind.index,
-                            span: spandex,
-                        });
-                    }
-                } else if binds_above {
-                    // Binding binds the value above
-                    let mut has_stack_value = false;
-                    for i in 0..self.asm.root.len() {
-                        let nodes = &self.asm.root[self.asm.root.len() - 1 - i..];
-                        let Ok(sig) = nodes_sig(nodes) else {
-                            break;
-                        };
-                        if sig.outputs() > 0 {
-                            has_stack_value = true;
-                            break;
-                        }
-                    }
-                    if has_stack_value {
-                        sig = Signature::new(0, 1);
-                    }
-                    if let Some(Node::Push(val, _)) = self.asm.root.last() {
-                        // Actually binds the constant
-                        let val = val.clone();
-                        self.asm.root.pop();
-                        self.compile_bind_const(name, bind, Some(val), spandex, meta);
-                    } else if sig == (0, 0) {
-                        // Empty function
-                        let mut node = Node::empty();
-                        // Validate signature
-                        if let Some(declared_sig) = &binding.signature {
-                            node = self.force_sig(node, declared_sig.value, &declared_sig.span)?;
-                            sig = declared_sig.value;
-                        }
-                        let func = make_fn(node, sig, self);
-                        self.compile_bind_function(name, bind, func, spandex, meta)?;
-                    } else {
-                        // Binds some |0.1 code
-                        self.compile_bind_const(name, bind, None, spandex, meta);
                         self.asm.root.push(Node::BindGlobal {
                             index: bind.index,
                             span: spandex,

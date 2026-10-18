@@ -12,6 +12,7 @@ use std::{
     borrow::{BorrowMut, Cow},
     cell::RefCell,
     collections::HashMap,
+    env,
     f64::consts::{PI, TAU},
     iter::repeat_n,
     sync::OnceLock,
@@ -778,6 +779,12 @@ impl ImplPrimitive {
                 env.push(val.unboxed());
             }
             ImplPrimitive::UnSort => env.monadic_mut(Value::shuffle)?,
+            ImplPrimitive::UnValidate => {
+                let val = env.pop(1)?;
+                let spec = Type::of_val(&val).spec_val();
+                env.push(val);
+                env.push(spec);
+            }
             ImplPrimitive::UnHsv => env.monadic_env(Value::hsv_to_rgb)?,
             ImplPrimitive::UnOklch => env.monadic_env(Value::oklch_to_rgb)?,
             ImplPrimitive::UnJson | ImplPrimitive::UnJson5 => {
@@ -835,6 +842,21 @@ impl ImplPrimitive {
                 (env.rt.backend)
                     .set_clipboard(&contents)
                     .map_err(|e| env.error(e))?;
+            }
+            ImplPrimitive::AntiVar => {
+                let key = env
+                    .pop(1)?
+                    .as_string(env, "Environment variable key must be a string")?;
+                let value = env
+                    .pop(2)?
+                    .as_string(env, "Environment variable value must be a string")?;
+                static LOCK: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
+                let _lock = LOCK.lock();
+                // Safety: `set_var` is unsafe for unix in multithreaded contexts.
+                // Use a lock to ensure serialization and thus safety.
+                unsafe {
+                    env::set_var(key, value);
+                }
             }
             ImplPrimitive::MatrixDiv => env.dyadic_rr_env(Value::matrix_div)?,
             &ImplPrimitive::RangeSub(n) => {

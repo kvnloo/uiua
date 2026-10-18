@@ -936,6 +936,8 @@ impl Value {
                 |a, b| a.undo_first(b, env).map(Into::into),
                 |a, b| a.undo_first(b, env).map(Into::into),
                 |a, b| a.undo_first(b, env).map(Into::into),
+                #[cfg(feature = "ga")]
+                |a, b| a.undo_first(b, env).map(Into::into),
                 |a, b| {
                     env.error(format!(
                         "Cannot unfirst {} into {}",
@@ -954,6 +956,8 @@ impl Value {
                 |a, b| a.undo_last(b, env).map(Into::into),
                 |a, b| a.undo_last(b, env).map(Into::into),
                 |a, b| a.undo_last(b, env).map(Into::into),
+                |a, b| a.undo_last(b, env).map(Into::into),
+                #[cfg(feature = "ga")]
                 |a, b| a.undo_last(b, env).map(Into::into),
                 |a, b| {
                     env.error(format!(
@@ -2444,9 +2448,7 @@ impl Array<f64> {
             check_number(n, env, u64::MAX as f64)?;
 
             let mut n = n as u64; // note: u64, not usize
-
             let mut divisors = eco_vec![];
-
             while n.is_multiple_of(2) {
                 n /= 2;
                 divisors.push(2.0f64);
@@ -2948,13 +2950,6 @@ impl Value {
                 hour += minute / 60.0;
                 minute = 60.0 + (minute % 60.0);
             }
-            if hour >= 24.0 {
-                day += (hour / 24.0).floor();
-                hour %= 24.0;
-            } else if hour < 0.0 {
-                day += hour / 24.0;
-                hour = 24.0 + (hour % 24.0);
-            }
             let day_delta = if day >= 28.0 {
                 let delta = day - 27.0;
                 day -= delta;
@@ -2966,6 +2961,13 @@ impl Value {
             } else {
                 day.fract()
             };
+            if hour >= 24.0 {
+                day += (hour / 24.0).floor();
+                hour %= 24.0;
+            } else if hour < 0.0 {
+                day += hour / 24.0;
+                hour = 24.0 + (hour % 24.0);
+            }
             if month >= 12.0 {
                 year += (month / 12.0).floor();
                 month %= 12.0;

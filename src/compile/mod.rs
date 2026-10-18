@@ -992,8 +992,7 @@ impl Compiler {
                 let span = *spandex.get_or_insert_with(|| self.add_span(span.clone()));
                 self.emit_diagnostic(
                     format!(
-                        "{name} comment describes {}, \
-                        but its code has signature {sig}",
+                        "{name} comment describes {}, but its code has signature {sig}",
                         comment_sig.sig_string()
                     ),
                     DiagnosticKind::Warning,
@@ -1286,13 +1285,51 @@ impl Compiler {
                 self.add_error(word.span.clone(), format!("Invalid number `{s}`"));
                 Node::new_push(0.0, self.add_span(word.span.clone()))
             }
+            Word::BasedInt(int) => {
+                let mut i = 0u128;
+                let chars = int.digits.chars();
+                if let IntBase::Vector = int.base {
+                    return Ok(Node::new_push(
+                        chars
+                            .map(|c| c.to_digit(16).unwrap_or(0) as u8)
+                            .collect::<EcoVec<_>>(),
+                        self.add_span(word.span),
+                    ));
+                }
+                let base = int.base.base();
+                let mut too_large = false;
+                for c in chars {
+                    if let Some(j) = (i.checked_mul(base as u128))
+                        .and_then(|i| i.checked_add(c.to_digit(base).unwrap_or(0) as _))
+                    {
+                        i = j
+                    } else {
+                        too_large = true;
+                        self.add_error(word.span.clone(), "Number is too large");
+                        break;
+                    }
+                }
+                let n = if i <= u8::MAX as _ {
+                    Value::from(i as u8)
+                } else {
+                    if !too_large && i > (1u128 << 53) && i as f64 as u128 != i {
+                        self.emit_diagnostic(
+                            "This number is not precisely representable",
+                            DiagnosticKind::Warning,
+                            word.span.clone(),
+                        );
+                    }
+                    Value::from(i as f64)
+                };
+                Node::new_push(n, self.add_span(word.span))
+            }
             Word::Char(c) => {
                 let val: Value = if c.chars().count() == 1 {
                     c.chars().next().unwrap().into()
                 } else {
                     c.into()
                 };
-                Node::new_push(val, self.add_span(word.span.clone()))
+                Node::new_push(val, self.add_span(word.span))
             }
             Word::String(s) => Node::new_push(s, self.add_span(word.span.clone())),
             Word::MultilineString(lines) => {
@@ -1593,6 +1630,10 @@ impl Compiler {
                     "Inline macro was not parsed as a modifier. \
                     This is a bug in the interpreter",
                 );
+                Node::empty()
+            }
+            Word::Underscore => {
+                self.add_error(word.span, "_ is not valid here");
                 Node::empty()
             }
         };

@@ -319,6 +319,8 @@ pub static ANTI_PATTERNS: &[&dyn InvertPattern] = &[
     &AntiJoinPat,
     &NoUnder(AntiContraFlip),
     &AntiCustomPat,
+    &(Sys(SysOp::Var), AntiVar),
+    &(AntiVar, Sys(SysOp::Var)),
 ];
 
 pub static CONTRA_PATTERNS: &[&dyn InvertPattern] = &[
@@ -1496,7 +1498,9 @@ inverse!(ImplPrimPat, input, _, ImplPrim(prim, span), {
         UnClip => Prim(Sys(SysOp::Clip), span),
         Retropose => ImplPrim(Retropose, span),
         MvImpl(mode) => ImplPrim(UnMv(mode), span),
+        ValidateImpl(_) => ImplPrim(UnValidate, span),
         UnMv(mode) => ImplPrim(MvImpl(mode), span),
+        UnValidate => ImplPrim(ValidateImpl(None), span),
         StackN { n, inverse } => ImplPrim(
             StackN {
                 n,
