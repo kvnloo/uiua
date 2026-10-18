@@ -345,6 +345,8 @@ mod type_spec_roundtrip_regression_tests {
             Scalar::Num.scalar_type(),
             Scalar::Num.any_shape(),
             Scalar::Num.shaped([2, 3]),
+            Scalar::Num.shaped([0, 3]),
+            Scalar::Num.shaped([Dim::Dyn, Dim::Static(3)]),
             Scalar::Char.shaped([4]),
         ] {
             let encoded = ty.clone().spec_val();
