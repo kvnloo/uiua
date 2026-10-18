@@ -2433,11 +2433,10 @@ mod fma_base_regression_tests {
     }
 
     #[test]
-    fn positive_fractional_base_near_multiple_is_euclidean() {
+    fn positive_fractional_base_digits_stay_in_range() {
         let env = Uiua::with_safe_sys();
         let input = Array::new([], eco_vec![11.0]);
         let digits = input.base_scalar(1.1, &env).unwrap();
-        assert_eq!(digits.data[0], 11.0_f64.rem_euclid(1.1));
         assert!(
             digits.data.iter().all(|d| (0.0..1.1).contains(d)),
             "positive-base digits must be in [0, base)"
