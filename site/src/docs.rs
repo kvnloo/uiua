@@ -157,13 +157,18 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
             siv_options.set_behavior(ScrollBehavior::Smooth);
             scroll_to_docs_functions(&siv_options);
         }
-        if update_location {
-            // Clearing must update the route before the same result is selected again.
-            let delay = if text.is_empty() {
-                Duration::ZERO
-            } else {
-                Duration::from_secs(2)
-            };
+        if update_location && text.is_empty() {
+            // Do not debounce clearing: the same result can be selected immediately.
+            navigate.with_value(|navigate| {
+                navigate(
+                    "/docs/",
+                    NavigateOptions {
+                        scroll: false,
+                        ..Default::default()
+                    },
+                );
+            });
+        } else if update_location {
             let text = text.to_string();
             set_timeout(
                 move || {
@@ -181,7 +186,7 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
                         });
                     }
                 },
-                delay,
+                Duration::from_secs(2),
             );
         }
         if allowed == old_allowed.get() && results.get().is_some() {
