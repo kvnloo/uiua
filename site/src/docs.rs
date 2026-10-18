@@ -5,7 +5,7 @@ use std::{
 };
 
 use enum_iterator::all;
-use leptos::*;
+use leptos::{leptos_dom::helpers::TimeoutHandle, *};
 use leptos_meta::*;
 use leptos_router::*;
 use uiua::{PrimClass, Primitive, SysOpClass};
@@ -133,7 +133,18 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
     let (current_prim, set_current_prim) = create_signal(None);
     let (clear_button, set_clear_button) = create_signal(None);
     let (old_allowed, set_old_allowed) = create_signal(Allowed::all());
+    let navigate = store_value(use_navigate());
+    let search_timeout = store_value(None::<TimeoutHandle>);
+    let cancel_search_timeout = move || {
+        search_timeout.update_value(|timeout| {
+            if let Some(timeout) = timeout.take() {
+                timeout.clear();
+            }
+        });
+    };
+    on_cleanup(cancel_search_timeout);
     let update_search = move |text: &str, update_location: bool| {
+        cancel_search_timeout();
         // Update clear button
         set_clear_button.set(if text.is_empty() {
             None
@@ -156,22 +167,38 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
             siv_options.set_behavior(ScrollBehavior::Smooth);
             scroll_to_docs_functions(&siv_options);
         }
-        if update_location {
+        if update_location && text.is_empty() {
+            // Do not debounce clearing: the same result can be selected immediately.
+            navigate.with_value(|navigate| {
+                navigate(
+                    "/docs/",
+                    NavigateOptions {
+                        scroll: false,
+                        ..Default::default()
+                    },
+                );
+            });
+        } else if update_location {
             let text = text.to_string();
-            set_timeout(
+            let timeout = set_timeout_with_handle(
                 move || {
                     let search_input = element::<HtmlInputElement>("function-search").value();
                     if search_input == text {
-                        BrowserIntegration {}.navigate(&LocationChange {
-                            value: format!("/docs/{}", urlencoding::encode(&text)),
-                            scroll: false,
-                            replace: false,
-                            ..Default::default()
-                        })
+                        // Keep the router's location in sync with the search URL.
+                        navigate.with_value(|navigate| {
+                            navigate(
+                                &format!("/docs/{}", urlencoding::encode(&text)),
+                                NavigateOptions {
+                                    scroll: false,
+                                    ..Default::default()
+                                },
+                            );
+                        });
                     }
                 },
                 Duration::from_secs(2),
             );
+            search_timeout.set_value(timeout.ok());
         }
         if allowed == old_allowed.get() && results.get().is_some() {
             return;
@@ -204,13 +231,18 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
             .unwrap_or_else(|| format!("{} Docs", lang()))
     };
 
-    set_timeout(
+    let initial_search_timeout = set_timeout_with_handle(
         {
             let search = search.clone();
             move || update_search(&search, false)
         },
         Duration::from_secs(0),
     );
+    on_cleanup(move || {
+        if let Ok(timeout) = initial_search_timeout {
+            timeout.clear();
+        }
+    });
     let on_search_input = move |event: Event| {
         let elem: HtmlInputElement = event.target().unwrap().dyn_into().unwrap();
         update_search(&elem.value(), true);

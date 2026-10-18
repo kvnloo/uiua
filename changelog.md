@@ -21,6 +21,8 @@ This version is not yet released. If you are reading this on the website, then t
   - `avg`
 ### Website
 - Separate [Aliases](https://uiua.org/docs/aliases) page from the [Idioms](https://uiua.org/docs/idioms) page.
+- Fix selecting the same primitive again after clearing the documentation search.
+- Cancel pending documentation searches when navigating away, including Back before the search debounce finishes.
 
 ## 0.19.1 - 2026-09-03
 ### Interpreter
