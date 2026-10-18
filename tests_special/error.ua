@@ -236,8 +236,8 @@ G
 # Nested under: empty input fails before the middle function.
 ⍜⍜⊢(¯⌵)(↘1) []
 
-# Nested under: invalid arithmetic fails while context is saved.
-⍜⍜⊢(¯⌵)(+1) "Hello"
+# Nested under: invalid number parsing fails while context is saved.
+⍜⍜⊢(¯⌵)⋕ "Hello"
 
 # Nested under: the middle function removes rows needed by the inverse.
 ⍜⍜(⊏0_1)⌵(↘3) 1_2_3
