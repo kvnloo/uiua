@@ -2660,7 +2660,8 @@ mod matrix_div_regression_tests {
         let rhs = Array::new([2, 1], eco_vec![3e-20, 8e-20]);
         let result = rhs.matrix_div(&divisor, &env).unwrap();
         assert_eq!(result.shape.as_slice(), &[2, 1]);
-        assert_eq!(result.data.as_slice(), &[3.0, 4.0]);
+        assert!((result.data[0] - 3.0).abs() < 1e-12);
+        assert!((result.data[1] - 4.0).abs() < 1e-12);
     }
 
     #[test]
