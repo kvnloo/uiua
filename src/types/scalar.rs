@@ -250,3 +250,16 @@ impl fmt::Display for Scalar {
         }
     }
 }
+
+#[cfg(test)]
+mod union_scalar_regression_tests {
+    use super::*;
+
+    #[test]
+    fn union_inclusion_respects_numeric_subtypes() {
+        let broad = Scalar::Or(vec![Scalar::Num.scalar_type()]);
+        let narrow = Scalar::Or(vec![Scalar::Nat.scalar_type()]);
+        assert!(broad.superset_of(&narrow));
+        assert!(!narrow.superset_of(&broad));
+    }
+}
