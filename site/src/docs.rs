@@ -158,6 +158,12 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
             scroll_to_docs_functions(&siv_options);
         }
         if update_location {
+            // Clearing must update the route before the same result is selected again.
+            let delay = if text.is_empty() {
+                Duration::ZERO
+            } else {
+                Duration::from_secs(2)
+            };
             let text = text.to_string();
             set_timeout(
                 move || {
@@ -175,7 +181,7 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
                         });
                     }
                 },
-                Duration::from_secs(2),
+                delay,
             );
         }
         if allowed == old_allowed.get() && results.get().is_some() {
