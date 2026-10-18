@@ -169,10 +169,10 @@ impl DynShape {
         }
     }
     pub fn superset_of(&self, other: &Self) -> bool {
-        if other.is_any() {
-            false
-        } else if self.is_any() {
+        if self.is_any() {
             true
+        } else if other.is_any() {
+            false
         } else if let Some(pref_self) = self.prefix_only()
             && let Some(pref_other) = other.prefix_only()
         {
@@ -276,7 +276,7 @@ impl Dim {
     }
     pub fn superset_of(&self, other: &Self) -> bool {
         match (self, other) {
-            (Dim::Dyn, Dim::Static(_)) => true,
+            (Dim::Dyn, _) => true,
             (Dim::Static(a), Dim::Static(b)) => a == b,
             _ => false,
         }
