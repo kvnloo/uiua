@@ -409,3 +409,16 @@ impl BitOr for TypeVal {
         TypeVal::Type(self.ty() | rhs.ty())
     }
 }
+
+#[cfg(test)]
+mod union_shape_regression_tests {
+    use super::*;
+
+    #[test]
+    fn shape_inclusion_is_reflexive_for_unknown_dimensions() {
+        assert!(DynShape::ANY.superset_of(&DynShape::ANY));
+        let unknown = DynShape::from(Dim::Dyn);
+        assert!(unknown.superset_of(&unknown));
+        assert!(unknown.superset_of(&DynShape::from(Dim::Static(4))));
+    }
+}
