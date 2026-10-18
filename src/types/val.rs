@@ -17,7 +17,9 @@ impl TypeVal {
             TypeVal::Type(ty) => ty.clone(),
             TypeVal::Val(val) => Type::of_val(&val),
             TypeVal::Or(vals) => {
-                Scalar::Or(vals.into_iter().map(TypeVal::ty).collect()).scalar_type()
+                // Alternatives can have different ranks, so the enclosing type
+                // must not assert that every possible outcome is scalar.
+                Scalar::Or(vals.into_iter().map(TypeVal::ty).collect()).any_shape()
             }
         }
     }
@@ -466,6 +468,15 @@ impl fmt::Display for TypeVal {
 #[cfg(test)]
 mod union_value_equality_regression_tests {
     use super::*;
+
+    #[test]
+    fn union_of_different_ranks_has_unknown_outer_shape() {
+        let value = TypeVal::Or(vec![
+            TypeVal::Type(Scalar::Num.shaped([2])),
+            TypeVal::Type(Scalar::Char.scalar_type()),
+        ]);
+        assert!(value.ty().shape.is_any());
+    }
 
     #[test]
     fn union_values_compare_equal_to_themselves() {
