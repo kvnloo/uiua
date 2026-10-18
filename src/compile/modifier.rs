@@ -517,7 +517,11 @@ impl Compiler {
         nodes.make_mut().reverse();
         Ok(nodes)
     }
-    fn modifier_operand(&mut self, modifier: &Modifier, word: Sp<Word>) -> UiuaResult<SigNode> {
+    pub(super) fn modifier_operand(
+        &mut self,
+        modifier: &Modifier,
+        word: Sp<Word>,
+    ) -> UiuaResult<SigNode> {
         use Primitive::*;
         let locals_height = self.locals.len();
         let locals_escape = match modifier {

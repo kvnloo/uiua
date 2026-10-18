@@ -2365,8 +2365,13 @@ impl Compiler {
     }
     fn try_(&mut self, branches: Vec<Sp<Word>>, span: CodeSpan, pattern: bool) -> UiuaResult<Node> {
         let in_try = replace(&mut self.in_try, true);
+        let prim = if pattern {
+            Primitive::Pattern
+        } else {
+            Primitive::Try
+        };
         let ops = (branches.into_iter())
-            .map(|w| self.word_sig(w))
+            .map(|w| self.modifier_operand(&Modifier::Primitive(prim), w))
             .collect::<UiuaResult<EcoVec<_>>>();
         self.in_try = in_try;
         let mut ops = ops?;
@@ -2382,11 +2387,6 @@ impl Compiler {
             }
         }
         let span = self.add_span(span);
-        let prim = if pattern {
-            Primitive::Pattern
-        } else {
-            Primitive::Try
-        };
         Ok(Node::Mod(prim, ops, span))
     }
     fn handle_primitive_deprecation(&mut self, prim: Primitive, span: &CodeSpan) {

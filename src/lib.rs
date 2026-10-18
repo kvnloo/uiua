@@ -383,6 +383,49 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "native_sys")]
+    fn recursive_branch_locals() {
+        // Regression for issue #1039, reported by cqn-brwpna9.
+        for (code, expected) in [
+            (
+                "# Experimental!\n\
+                 F ← |1 ⍡(⊸⍩°1|×D F D:⟜-₁)\n\
+                 F 1 # comment out this line for a different error\n\
+                 F 2",
+                vec![1, 2],
+            ),
+            (
+                "# Experimental!\n\
+                 F ← |1 ⍡(⊸⍩°1|×D F D:⟜-₁)\n\
+                 F 2",
+                vec![2],
+            ),
+            (
+                "# Experimental!\n\
+                 F ← |1 ⍣(⊸°1|×D F D:⟜-₁)\n\
+                 F 1\n\
+                 F 2\n\
+                 F 5",
+                vec![1, 2, 120],
+            ),
+        ] {
+            let mut env = Uiua::with_native_sys();
+            env.run_str(code)
+                .unwrap_or_else(|e| panic!("{}", e.report()));
+            let (stack, under_stack) = env.take_stacks();
+            assert_eq!(
+                stack,
+                expected
+                    .into_iter()
+                    .map(crate::Value::from)
+                    .collect::<Vec<_>>(),
+                "{code}"
+            );
+            assert!(under_stack.is_empty(), "{code}");
+        }
+    }
+
+    #[test]
     fn external_bind_before() {
         let mut comp = Compiler::new();
         comp.create_bind_function("F", (2, 1), |env| {
