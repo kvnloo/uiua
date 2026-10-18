@@ -133,6 +133,7 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
     let (current_prim, set_current_prim) = create_signal(None);
     let (clear_button, set_clear_button) = create_signal(None);
     let (old_allowed, set_old_allowed) = create_signal(Allowed::all());
+    let navigate = store_value(use_navigate());
     let update_search = move |text: &str, update_location: bool| {
         // Update clear button
         set_clear_button.set(if text.is_empty() {
@@ -162,12 +163,16 @@ fn DocsHome(#[prop(optional)] search: String) -> impl IntoView {
                 move || {
                     let search_input = element::<HtmlInputElement>("function-search").value();
                     if search_input == text {
-                        BrowserIntegration {}.navigate(&LocationChange {
-                            value: format!("/docs/{}", urlencoding::encode(&text)),
-                            scroll: false,
-                            replace: false,
-                            ..Default::default()
-                        })
+                        // Keep the router's location in sync with the search URL.
+                        navigate.with_value(|navigate| {
+                            navigate(
+                                &format!("/docs/{}", urlencoding::encode(&text)),
+                                NavigateOptions {
+                                    scroll: false,
+                                    ..Default::default()
+                                },
+                            );
+                        });
                     }
                 },
                 Duration::from_secs(2),
