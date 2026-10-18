@@ -169,7 +169,7 @@ impl DynShape {
         }
     }
     pub fn superset_of(&self, other: &Self) -> bool {
-        if self.is_any() {
+        if self == other || self.is_any() {
             true
         } else if other.is_any() {
             false
@@ -420,5 +420,10 @@ mod union_shape_regression_tests {
         let unknown = DynShape::from(Dim::Dyn);
         assert!(unknown.superset_of(&unknown));
         assert!(unknown.superset_of(&DynShape::from(Dim::Static(4))));
+        let constrained = DynShape {
+            dims: vec![Dim::Dyn],
+            suffix: Some(vec![Dim::Static(3)]),
+        };
+        assert!(constrained.superset_of(&constrained));
     }
 }
