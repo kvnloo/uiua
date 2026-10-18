@@ -1521,6 +1521,10 @@ impl Array<f64> {
             )));
         }
 
+        if a.data.iter().chain(b.data.iter()).any(|v| !v.is_finite()) {
+            return Err(env.error("Matrix division requires finite entries"));
+        }
+
         let n = a.shape[0];
         let rhs_cols = b.shape[1];
         let idx = |r, c| r * n + c;
@@ -1559,7 +1563,9 @@ impl Array<f64> {
 
                 // this check is very Not Ideal, but i can't
                 // think of anything better
-                if a[idx(i, i)].abs() < f64::EPSILON {
+                // An absolute EPSILON cutoff incorrectly rejects well-scaled,
+                // invertible matrices (for example 1e-20 times the identity).
+                if a[idx(i, i)] == 0.0 {
                     return Err(env.error(
                         "Matrix divisor is numerically singular (the matrix inversion failed)",
                     ));
@@ -2515,6 +2521,34 @@ mod matrix_div_regression_tests {
         let result = rhs.matrix_div(&divisor, &env).unwrap();
         assert_eq!(result.shape.as_slice(), &[2, 3]);
         assert_eq!(result.data.as_slice(), &[4.0, 5.0, 6.0, 1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn scaled_identity_remains_invertible() {
+        let env = Uiua::with_safe_sys();
+        let divisor = Array::new([2, 2], eco_vec![1e-20, 0.0, 0.0, 2e-20]);
+        let rhs = Array::new([2, 1], eco_vec![3e-20, 8e-20]);
+        let result = rhs.matrix_div(&divisor, &env).unwrap();
+        assert_eq!(result.shape.as_slice(), &[2, 1]);
+        assert_eq!(result.data.as_slice(), &[3.0, 4.0]);
+    }
+
+    #[test]
+    fn nonfinite_divisor_is_rejected() {
+        let env = Uiua::with_safe_sys();
+        let divisor = Array::new([2, 2], eco_vec![f64::NAN, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 1], eco_vec![1.0, 2.0]);
+        assert!(rhs.matrix_div(&divisor, &env).is_err());
+    }
+
+    #[test]
+    fn zero_column_rhs_is_preserved() {
+        let env = Uiua::with_safe_sys();
+        let divisor = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 0], EcoVec::<f64>::new());
+        let result = rhs.matrix_div(&divisor, &env).unwrap();
+        assert_eq!(result.shape.as_slice(), &[2, 0]);
+        assert!(result.data.is_empty());
     }
 
     #[test]
