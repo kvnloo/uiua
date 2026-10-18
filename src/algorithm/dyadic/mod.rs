@@ -2544,7 +2544,9 @@ mod matrix_div_regression_tests {
         );
         let rhs = Array::new(
             [3, 4],
-            eco_vec![6.0, 7.0, 12.0, 19.0, 1.0, 8.0, 8.0, 8.0, 6.0, 3.0, 5.0, 13.0],
+            eco_vec![
+                6.0, 7.0, 12.0, 19.0, 1.0, 8.0, 8.0, 8.0, 6.0, 3.0, 5.0, 13.0
+            ],
         );
         assert_solves(
             &divisor,
@@ -2557,10 +2559,7 @@ mod matrix_div_regression_tests {
     fn near_singular_system_is_consistent_across_uniform_scaling() {
         let delta = 2.0_f64.powi(-40);
         for scale in [1e-20, 1.0, 1e20] {
-            let divisor = Array::new(
-                [2, 2],
-                eco_vec![scale, scale, scale, (1.0 + delta) * scale],
-            );
+            let divisor = Array::new([2, 2], eco_vec![scale, scale, scale, (1.0 + delta) * scale]);
             // X = [1, 1] avoids introducing an unrelated ill-conditioned
             // rounding error while still requiring a small second pivot.
             let rhs = Array::new([2, 1], eco_vec![2.0 * scale, (2.0 + delta) * scale]);
