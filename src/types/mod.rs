@@ -2001,3 +2001,52 @@ fn dyad(ops: &[SigNode]) -> &[SigNode; 2] {
 fn get_ops<const N: usize>(ops: &[SigNode]) -> &[SigNode; N] {
     ops.try_into().unwrap()
 }
+
+#[cfg(test)]
+mod union_type_regression_tests {
+    use super::*;
+
+    #[test]
+    fn rejected_union_variant_does_not_refine_the_next_variant() {
+        let mut actual = Scalar::Box(ScalarBox::Any).scalar_type();
+        // The first arm refines Box(Any) before its shape check fails.
+        let incompatible_shape = Scalar::Box(ScalarBox::All(Box::new(
+            Scalar::Nat.scalar_type(),
+        )))
+        .shaped([3]);
+        let compatible = Scalar::Box(ScalarBox::Any).scalar_type();
+        let spec = Scalar::Or(vec![incompatible_shape, compatible]).any_shape();
+        validate(spec, &mut actual, None).unwrap();
+        assert_eq!(actual.scalar, Scalar::Box(ScalarBox::Any));
+    }
+
+    #[test]
+    fn pervasive_union_in_second_argument_keeps_operand_order() {
+        let asm = Assembly::default();
+        let mut env = TypeEnv {
+            asm: &asm,
+            stack: vec![],
+            under_stack: vec![],
+            call_stack: vec![],
+            arg_types: vec![],
+            fill_stack: vec![],
+            stashed_fills: vec![],
+            can_set_arg_types: true,
+        };
+        let result = env
+            .dyadic_pervasive_inner(
+                |left, right, _, _| {
+                    if left == Scalar::Num && right == Scalar::Char {
+                        Ok(Scalar::Num)
+                    } else {
+                        Err(TypeError::Unsupported(Some("operands reversed".into())))
+                    }
+                },
+                |_, _| 0.0_f64,
+                TypeVal::Type(Scalar::Num.scalar_type()),
+                TypeVal::Or(vec![TypeVal::Type(Scalar::Char.scalar_type())]),
+            )
+            .unwrap();
+        assert_eq!(result.ty().scalar, Scalar::Num);
+    }
+}
