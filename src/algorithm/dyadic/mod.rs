@@ -1522,7 +1522,9 @@ impl Array<f64> {
         }
 
         let n = a.shape[0];
+        let rhs_cols = b.shape[1];
         let idx = |r, c| r * n + c;
+        let rhs_idx = |r, c| r * rhs_cols + c;
 
         /// Returns L (nxn) and P (n), 'a' is modified into U
         fn lu_decomp(a: &mut [f64], n: usize, env: &Uiua) -> UiuaResult<(Vec<f64>, Vec<usize>)> {
@@ -1590,34 +1592,34 @@ impl Array<f64> {
         let old = x.clone();
 
         for i in 0..n {
-            for k in 0..n {
-                x.make_mut()[idx(i, k)] = old[idx(p[i], k)];
+            for k in 0..rhs_cols {
+                x.make_mut()[rhs_idx(i, k)] = old[rhs_idx(p[i], k)];
             }
         }
 
         // L⁻¹ * · (forward subst)
         for i in 0..n {
-            for k in 0..n {
-                let mut s = x[idx(i, k)];
+            for k in 0..rhs_cols {
+                let mut s = x[rhs_idx(i, k)];
                 for j in 0..i {
-                    s -= l[idx(i, j)] * x[idx(j, k)];
+                    s -= l[idx(i, j)] * x[rhs_idx(j, k)];
                 }
-                x.make_mut()[idx(i, k)] = s / l[idx(i, i)];
+                x.make_mut()[rhs_idx(i, k)] = s / l[idx(i, i)];
             }
         }
 
         // U⁻¹ * · (back subst)
         for i in (0..n).rev() {
-            for k in 0..n {
-                let mut s = x[idx(i, k)];
+            for k in 0..rhs_cols {
+                let mut s = x[rhs_idx(i, k)];
                 for j in (i + 1)..n {
-                    s -= u[idx(i, j)] * x[idx(j, k)];
+                    s -= u[idx(i, j)] * x[rhs_idx(j, k)];
                 }
-                x.make_mut()[idx(i, k)] = s / u[idx(i, i)];
+                x.make_mut()[rhs_idx(i, k)] = s / u[idx(i, i)];
             }
         }
 
-        Ok(Array::new(a.shape.clone(), x))
+        Ok(Array::new(b.shape.clone(), x))
     }
 }
 
