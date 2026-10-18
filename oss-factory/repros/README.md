@@ -1,48 +1,28 @@
-# Uiua downstream runtime reproductions
+# Uiua issue #1041 — missing needles in under indexin
 
-These are **diagnostic fixtures**, not accepted test cases. They are intentionally
-outside `tests/` and `tests_special/` because the current upstream behavior
-may fail. Do not claim either issue is fixed or reproducible on the current
-interpreter without running these cases.
-
-## #1039 — locals + recursion
-
-Source: https://github.com/uiua-lang/uiua/issues/1039
-
-Run from the checkout:
-
-```sh
-uiua eval -x "$(cat oss-factory/repros/1039-locals-recursion.ua)"
-```
-
-The issue reports two different internal interpreter-bug diagnostics depending
-on whether the `F 1` line is active. Compare both variants on the same commit.
-Desired behavior is a valid result or ordinary explained runtime error,
-not "This is a bug in the interpreter."
-
-## #1041 — under indexin with missing needles
+Downstream **diagnostic fixtures**, not accepted tests or a behavior fix. These
+files are intentionally outside `tests/` and `tests_special/` because the
+inverse semantics are not yet agreed upon.
 
 Source: https://github.com/uiua-lang/uiua/issues/1041
-Original passing example: `⍤⤙≍ "cbc" ⍜⊗+₁ "abc" "bab"`
-(in upstream `tests/under.ua`).
+
+Run on a native Uiua build:
 
 ```sh
 uiua eval "$(cat oss-factory/repros/1041-under-indexin.ua)"
 ```
 
-The first expression contains only matching needles; the second retains
-the not-found sentinel from `⊗` through an identity-like update and should
-not try to index out of bounds if the proposed enhancement is implemented.
-The last expression moves the sentinel to a different position; its intended
-result is not yet specified. Verify that the interpreter does not optimize
-away the identity case before relying on it as a regression. Capture exact
-stdout, stderr, version and exit code.
+The first expression is a control with all needles present. The second
+preserves a not-found sentinel through an identity-like update and can
+exercise the current out-of-bounds reverse lookup. The third moves a sentinel,
+exposing the yet-undecided question of which original needle to recover at a
+new position. Verify that optimizer simplification doesn't bypass the
+identity-like case. Record Uiua version, stdout/stderr and exit status.
 
-## Gates
+For issue #1039 locals/recursion, use the independent **source-fix and test
+branch** in https://github.com/kvnloo/uiua/pull/12 instead of duplicating
+its source and regression tests here.
 
-* Run on the current upstream base and record which expressions actually fail.
-* Reduce reproductions to minimum examples and distinguish compiler errors
-  from runtime errors and host panics.
-* Only after the intended semantics are agreed, move executable assertions
-  into existing tests.
-* Keep upstream reviewers/maintainers uncontacted during downstream waves.
+**Gate:** reproduce on current native Uiua; obtain human agreement on the
+missing-sentinel behavior; only then add assertions to the main test suite.
+No upstream AI contributions.
