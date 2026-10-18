@@ -2410,6 +2410,29 @@ mod fma_base_regression_tests {
     use super::*;
 
     #[test]
+    fn optimized_digits_match_euclidean_reference() {
+        let env = Uiua::with_safe_sys();
+        for (n, base) in [
+            (11.0_f64, 1.1_f64),
+            (-11.0, 1.1),
+            (1237.0, 2.7),
+            (1001.0, 10.0),
+            (145.0, 12.0),
+            (0.0, 2.0),
+        ] {
+            let input = Array::new([], eco_vec![n]);
+            let digits = input.base_scalar(base, &env).unwrap();
+            let mut abs_n = n.abs();
+            let sign = if n < 0.0 { -1.0 } else { 1.0 };
+            for &digit in digits.data.iter() {
+                let expected = abs_n.rem_euclid(base) * sign;
+                assert_eq!(digit, expected, "base={base} n={n}");
+                abs_n = abs_n.div_euclid(base);
+            }
+        }
+    }
+
+    #[test]
     fn positive_fractional_base_near_multiple_is_euclidean() {
         let env = Uiua::with_safe_sys();
         let input = Array::new([], eco_vec![11.0]);
