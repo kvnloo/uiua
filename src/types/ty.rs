@@ -334,3 +334,22 @@ impl fmt::Display for Type {
         }
     }
 }
+
+#[cfg(test)]
+mod type_spec_roundtrip_regression_tests {
+    use super::*;
+
+    #[test]
+    fn scalar_any_shape_and_fixed_dims_roundtrip() {
+        for ty in [
+            Scalar::Num.scalar_type(),
+            Scalar::Num.any_shape(),
+            Scalar::Num.shaped([2, 3]),
+            Scalar::Char.shaped([4]),
+        ] {
+            let encoded = ty.clone().spec_val();
+            let decoded = Type::from_spec(&encoded);
+            assert_eq!(decoded, Some(ty));
+        }
+    }
+}
