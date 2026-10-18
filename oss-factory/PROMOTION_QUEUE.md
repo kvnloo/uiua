@@ -70,6 +70,9 @@
 
 ## Repro evidence and review follow-up
 
+**Reproducible reference harness:** [`oss-factory/evidence/reference_oracles.py`](https://github.com/kvnloo/uiua/blob/oss-factory/triage-2026-10-17/oss-factory/evidence/reference_oracles.py). Run `python oss-factory/evidence/reference_oracles.py` with NumPy and POSIX libm. This runs only Python equivalents and NumPy residual checks, **not** compiled Uiua. Observed: 30,000 deterministic FMA comparisons plus the 11/1.1 boundary; 1,120 deterministic matrix cases, maximum absolute residual 1.2881e-12.
+
+
 1. **#1037:** f64 FMA `10.mul_add(-1.1, 11.0)` gives `-8.881784197001252e-16`; Euclidean remainder `11.0 % 1.1` gives `1.0999999999999992`. In a controlled synthetic sweep of **11,500** positive numbers/bases, **1,109** FMA residues fell outside `[0, base)`; this is NOT a representative workload or speed benchmark. The branch fixes the invariant via guarded fallback.
 2. **#1036:** for `A = [[0,1],[1,0]]` and `B = [[1,2,3],[4,5,6]]`, a correct `AX=B` solution has shape `2×3` and rows `[[4,5,6],[1,2,3]]`; for identity `A` and column `B=[[7],[9]]`, output is `2×1`. The old algorithm indexed `B` with `n` columns regardless of `m` and always returned shape of `A`. Python/NumPy oracle validated these cases.
 3. **#1031:** `dyadic_pervasive_inner` reversed operands when its RHS was a union; union-arm validation mutated `ch` on failed candidate; dynamic dimension inclusion incorrectly rejected `Dyn ⊇ Dyn`, and a union's subtype inclusion required exact variant equality instead of coverage. All four changes are isolated in downstream fork #6 with Rust tests.
