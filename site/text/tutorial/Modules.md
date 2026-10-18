@@ -258,7 +258,7 @@ The Uiua GitHub organization hosts an example module at [https://github.com/uiua
 Upscale 3 [1_2 3_4]
 ```
 
-On the site, code is pulled from a `lib.ua` file at the root of the repository. Loading other files on the site is not supported.
+On the site, GitHub modules are fetched from the repository's `main` branch, even if its default branch has a different name. The web backend does not support `branch:` or `commit:` specifiers. Code is pulled from a `lib.ua` file; loading other files on the site is not supported.
 
 To use Git modules in the [native interpreter](/docs/install), you must have Git installed. The repository is cloned and the `lib.ua` file is loaded as the module's contents. Code from other files can be made available by importing them as modules in the `lib.ua` file.
 
