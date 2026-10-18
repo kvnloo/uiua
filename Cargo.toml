@@ -153,7 +153,7 @@ serde_yaml = {version = "0.9.33", optional = true}
 # Feature dependencies
 arboard = {version = "3", optional = true, features = ["wayland-data-control"]}
 calamine = {version = "0.36.0", optional = true}
-cosmic-text = {version = "0.15.0", optional = true}
+cosmic-text = {version = "0.19.0", optional = true}
 csv = {version = "1", optional = true}
 flate2 = {workspace = true, optional = true}
 gif = {version = "0.13.1", optional = true, default-features = false, features = ["std"]}
