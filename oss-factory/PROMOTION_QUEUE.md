@@ -4,30 +4,36 @@
 **Scope:** all 21 open upstream issues and 14 open upstream PRs at the snapshot. Track new entries here; do not create parallel queues.
 **Location:** this is the per-repo queue because GitHub Issues are disabled on `kvnloo/uiua`. This repository is downstream-only for this wave; do not post upstream, approve, or merge anyone's PR automatically.
 
-## Verified work in our fork
+## Downstream work in our fork (native tests pending)
 
 | Fork PR | Source / original contributor | Status and contents |
 | --- | --- | --- |
 | [#3](https://github.com/kvnloo/uiua/pull/3) | [uiua #668](https://github.com/uiua-lang/uiua/issues/668) | Documentation-only patch clarifying `main` branch and `branch:`/`commit:` limits in web pad. Static source verified; Rust/site validation pending. |
-| [#4](https://github.com/kvnloo/uiua/pull/4) | [uiua PR #1036](https://github.com/uiua-lang/uiua/pull/1036), original author **@amatgil** | `A (n×n) \ B (n×m)`: fix RHS stride, number of columns, and output shape; 2 Rust tests for n×3 and n×1 RHS. Independent NumPy expectations verified; Rust tests pending. |
-| [#5](https://github.com/kvnloo/uiua/pull/5) | [uiua PR #1037](https://github.com/uiua-lang/uiua/pull/1037), original author **@ndren** | Fall back to Euclidean remainder when FMA yields a negative/out-of-range/nonfinite result for a positive base; 1 Rust regression test. Independent libm reproduction; Rust tests and benchmark pending. |
-| [#6](https://github.com/kvnloo/uiua/pull/6) | [uiua PR #1031](https://github.com/uiua-lang/uiua/pull/1031), original author **@Dguto9** | RHS union operand order, transactional union-arm validation, subtype inclusion and dynamic-shape reflexivity; 4 Rust regression tests. Rust tests pending; upstream is a draft. |
+| [#4](https://github.com/kvnloo/uiua/pull/4) | [uiua PR #1036](https://github.com/uiua-lang/uiua/pull/1036), original author **@amatgil** | Rectangular-RHS stride/shape fix, nonfinite guard, exact-zero pivot check; **5 Rust tests** (2×1, 2×3, empty RHS, scaled identity, NaN). Python/NumPy model: 1,120 cases, max absolute residual ~1.29e-12. Rust build/tests pending. |
+| [#5](https://github.com/kvnloo/uiua/pull/5) | [uiua PR #1037](https://github.com/uiua-lang/uiua/pull/1037), original author **@ndren** | Guarded FMA path preserves Euclidean range via fallback; **2 Rust tests**, including per-digit reference comparison across negative/fractional bases. Independent libm sweep: 30,000 sampled values, no in-range fmod differences; Rust tests/benchmarks pending. |
+| [#6](https://github.com/kvnloo/uiua/pull/6) | [uiua PR #1031](https://github.com/uiua-lang/uiua/pull/1031), original author **@Dguto9** | Union operand-order, transactional validation, shape inclusion, dynamic-shape reflexivity, union equality, and conservative union-result shape; **8 Rust regression tests**. Draft source; Rust tests pending. |
 | [#8](https://github.com/kvnloo/uiua/pull/8) | [uiua #635](https://github.com/uiua-lang/uiua/issues/635) | Types tutorial explains IEEE-754 f64 exact integer range and 64-bit bit-vector conversion loss; docs-only. Site build pending. |
 | [#9](https://github.com/kvnloo/uiua/pull/9) | [uiua PR #1030](https://github.com/uiua-lang/uiua/pull/1030), original author **@Dguto9** | 1 Rust regression for `Type::spec_val`/`Type::from_spec` round-trips across scalar, any and fixed shapes. Test execution pending. |
+| [#10](https://github.com/kvnloo/uiua/pull/10) | [uiua PR #1003](https://github.com/uiua-lang/uiua/pull/1003), original author **@UnrelatedString** | Adds requested invalid nested-under cases to `tests_special/error.ua` and neighboring-success tests. Source compiles not verified; no upstream writes. |
+| [#11](https://github.com/kvnloo/uiua/pull/11) | [uiua issue #338](https://github.com/uiua-lang/uiua/issues/338), reported by **@tankorsmash** | Router synchronization on clear/reselect; public browser failure reportedly reproduced, built fix not yet validated. |
+| [#12](https://github.com/kvnloo/uiua/pull/12) | [uiua issue #1039](https://github.com/uiua-lang/uiua/issues/1039), reported by **@cqn-brwpna9** | Pattern/Try branch local-scope finalization correction with direct Rust regression. Native test execution pending. |
+| [#13](https://github.com/kvnloo/uiua/pull/13) | [uiua issue #1041](https://github.com/uiua-lang/uiua/issues/1041) | Diagnostic input for missing `under indexin` sentinel cases, with passing control and displaced-sentinel scenario. Semantics TBD; no source fix or runtime validation. |
 
-**Evidence & environment:** no `rustc`/`cargo` in this execution environment; GitHub Actions on `kvnloo/uiua` returned zero workflow runs (as checked). Do not call these Rust-test-verified or merge-ready. The PRs preserve the original contributors' head commits and authorship. The fork main remains synced to upstream; all changes are on separate branches.
+**Validation & provenance:** No `rustc`/`cargo` toolchain or network checkout here; GitHub Actions in the fork showed zero runs when checked. Rust compilation/tests and built-web verification remain **unverified**. Independent Python/NumPy/libm checks validate the mathematical reproductions, not compiled Uiua code. All source PR branches retain original human contributors' source commits, and `main` is unchanged.
+
+**Upstream boundary:** [Uiua AGENTS.md](https://github.com/uiua-lang/uiua/blob/main/AGENTS.md) explicitly disallows agent contributions. These fork-only drafts are **not upstream-promotion candidates**; do not submit AI-produced patches, comments, or reviews upstream, even with user authorization.
 
 ## Upstream PR intake — 14/14 reviewed
 
 | PR | Triage | Evidence and next step |
 | --- | --- | --- |
-| [#1031](https://github.com/uiua-lang/uiua/pull/1031) | P1, draft, correctness | Union types; run fork [#6](https://github.com/kvnloo/uiua/pull/6), validate nested unions, branch isolation, dyadic operand order and type-join semantics; coordinate with @Dguto9 before any promotion. |
-| [#1036](https://github.com/uiua-lang/uiua/pull/1036) | P1, draft, correctness | Matrix left division; fork [#4](https://github.com/kvnloo/uiua/pull/4) fixes rectangular RHS. Also investigate absolute `f64::EPSILON` singular check and nonfinite pivots; tests/benchmark required. |
+| [#1031](https://github.com/uiua-lang/uiua/pull/1031) | P1, draft, correctness | Downstream [PR #6](https://github.com/kvnloo/uiua/pull/6) covers union inference, type inclusion and equality. Needs native compile/run; upstream author review is not requested due human-only policy. |
+| [#1036](https://github.com/uiua-lang/uiua/pull/1036) | P1, draft, correctness | Downstream [PR #4](https://github.com/kvnloo/uiua/pull/4) covers rectangular RHS, tiny well-scaled matrices and nonfinite inputs. Need native suite and matrix residual benchmark before claiming readiness. |
 | [#1037](https://github.com/uiua-lang/uiua/pull/1037) | P1, ready PR with correctness question | Direct div/rem FMA. Fork [#5](https://github.com/kvnloo/uiua/pull/5) guards Euclidean range; benchmark fractional and integer bases and confirm old semantics. |
 | [#1033](https://github.com/uiua-lang/uiua/pull/1033) | P2, dependency bot | `nokhwa` 0.10.9→0.10.11, lockfile-only; validate webcam builds/features, platform compatibility, and security advisories before accepting. |
 | [#1032](https://github.com/uiua-lang/uiua/pull/1032) | P2, dependency bot / higher risk | `cosmic-text` 0.15→0.19, lockfile transitive changes; check actual API compatibility, font rendering and GUI builds rather than approving blindly. |
 | [#1030](https://github.com/uiua-lang/uiua/pull/1030) | P2, small fix | @Dguto9 adjusts scalar/any-shape type-spec output (two lines). Added dedicated round-trip tests in downstream [PR #9](https://github.com/kvnloo/uiua/pull/9); run tests, then check overlap with #1031. Existing feedback was positive; avoid duplicate comment. |
-| [#1003](https://github.com/uiua-lang/uiua/pull/1003) | P1, correctness / tests | @UnrelatedString nested `under`; maintainer @kaikalii specifically requested invalid-use tests in `tests_special/error.ua`. Respect existing discussion; do not post a duplicate request. |
+| [#1003](https://github.com/uiua-lang/uiua/pull/1003) | P1, correctness / tests | @UnrelatedString nested-under proposal; [downstream PR #10](https://github.com/kvnloo/uiua/pull/10) adds invalid-use tests specifically requested by @kaikalii. Native validation required; no duplicate maintainer comment. |
 | [#1011](https://github.com/uiua-lang/uiua/pull/1011) | P2, dependency bot | `viuer` 0.9→0.11; `crossterm` is also updated transitively. Verify terminal image integrations and Linux/Windows portability. |
 | [#1009](https://github.com/uiua-lang/uiua/pull/1009) | P2, dependency bot | `tokio` 1.47.1→1.53.1; target supported Rust version, async I/O and tests; avoid redundant lockfile-only adjustments. |
 | [#1008](https://github.com/uiua-lang/uiua/pull/1008) | P2, dependency bot | `rayon` 1.10→1.12; check parallel interpreter paths and ecosystem compatibility. |
@@ -40,9 +46,9 @@
 
 | Issue | Triage and next action |
 | --- | --- |
-| [#1041](https://github.com/uiua-lang/uiua/issues/1041) | P1: `under indexin` not-found sentinel reaches reverse phase, yielding OOB. Produce minimal tests covering absent needle, unchanged sentinel and changed needle before deciding exact inverse behavior. |
+| [#1041](https://github.com/uiua-lang/uiua/issues/1041) | P1: missing sentinel during `under indexin` reverse lookup. Downstream [PR #13](https://github.com/kvnloo/uiua/pull/13) has diagnostic cases, not an approved behavior/fix. Verify on native binary before creating suite assertions. |
 | [#1040](https://github.com/uiua-lang/uiua/issues/1040) | P1: `Or` type requested; already under [PR #1031](https://github.com/uiua-lang/uiua/pull/1031). No parallel feature PR. |
-| [#1039](https://github.com/uiua-lang/uiua/issues/1039) | P1: locals + recursion yields interpreter-bug errors; minimize with current dev build and add non-crash tests when reproducible. |
+| [#1039](https://github.com/uiua-lang/uiua/issues/1039) | P1: locals + recursion internal interpreter errors. Downstream [PR #12](https://github.com/kvnloo/uiua/pull/12) has scoped candidate fix and executable tests; do not duplicate source work. Native validation pending. |
 | [#1027](https://github.com/uiua-lang/uiua/issues/1027) | P2: force ANSI colors through pipes. @memark offered to implement `--color=auto|always|never`, preserve `--no-color`; align all subcommands, including `doc`, `eval`, REPL. Avoid duplicate implementation before checking ownership. |
 | [#1002](https://github.com/uiua-lang/uiua/issues/1002) | P1: nested `under` context save/restore tracked by [PR #1003](https://github.com/uiua-lang/uiua/pull/1003); prioritize negative test coverage requested by maintainer. |
 | [#875](https://github.com/uiua-lang/uiua/issues/875) | P3: version-locked embeds require multi-version interpreter distribution; maintainer noted hosting complexity. Prototype compatibility manifest only after design discussion. |
@@ -60,7 +66,7 @@
 | [#250](https://github.com/uiua-lang/uiua/issues/250) | P3: floating log10 precision; maintainer cautioned about pervasive-operation slowdown and rejected naive integer-log rounding. Benchmark and preserve IEEE semantics. |
 | [#489](https://github.com/uiua-lang/uiua/issues/489) | P3: complex math edge cases, error bounds partly fixed by maintainer; remaining NaN/∞ tradeoffs are design/perf sensitive. |
 | [#481](https://github.com/uiua-lang/uiua/issues/481) | P3: invertible reshape semantics (`△.` vs `⊃△♭`) undecided; do not implement until agreed. |
-| [#338](https://github.com/uiua-lang/uiua/issues/338) | P2 UX bug: docs search clear → reselect same primitive. Needs browser reproduction around `site/src/docs.rs` (`set_timeout`, `Allowed` memo and route changes) before fixing. |
+| [#338](https://github.com/uiua-lang/uiua/issues/338) | P2 UX: docs search clear → select same primitive. Downstream [PR #11](https://github.com/kvnloo/uiua/pull/11) synchronizes router location; author reports public-browser reproduction, built fix validation pending. |
 
 ## Repro evidence and review follow-up
 
@@ -70,12 +76,12 @@
 4. **#1003:** await/prepare failure tests for nested `under` in `tests_special/error.ua`; maintainer has explicitly requested them. Avoid untested guessed fixtures.
 5. **#338/#1039/#1041:** require true runtime/browser repro before asserting a fix.
 
-## Promotion gates and next waves
+## Fork-only validation gates and next waves
 
 - Run `cargo fmt --all --check`, `cargo test --lib`, `cargo clippy --no-deps --all-targets --workspace --all-features -- --deny=warnings` on each isolated code branch; rerun targeted tests. The available runtime has neither `cargo` nor `rustc`, and the fork has no Action runs.
 - Verify branch base against fresh upstream main; prefer small commits and no speculative API changes. Benchmark #1037 performance and validate #1036 singular/NaN behavior.
 - Fix failing tests in the downstream branch first; do not merge the four draft PRs blindly into fork main. Keep cross-author commits and explicit attribution.
-- Before any promotion, check current maintainer feedback; post at most one independent, actionable review per PR, avoid duplicate reports and unrequested approvals. Upstream writes remain out of scope until explicitly authorized.
+- Respect Uiua's human-only upstream rule. Do not submit AI-authored code, reviews or comments to upstream; this user-owned fork remains an isolated experiment.
 - Reconcile this single queue on each wave; update existing rows rather than create more queue issues. Link ready changes from the factory-wide index separately only if permitted.
 
 ## Historical fork branches
