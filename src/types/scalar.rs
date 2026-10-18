@@ -84,10 +84,9 @@ impl Scalar {
             (Scalar::Int, Scalar::Nat | Scalar::Bool) => true,
             (Scalar::Nat, Scalar::Bool) => true,
             (Scalar::Char, Scalar::Ascii) => true,
-            (Scalar::Or(slf_variants), Scalar::Or(sub_variants)) => slf_variants
+            (Scalar::Or(slf_variants), Scalar::Or(sub_variants)) => sub_variants
                 .iter()
-                .collect::<HashSet<_>>()
-                .is_superset(&sub_variants.iter().collect()),
+                .all(|sub_ty| slf_variants.iter().any(|sup_ty| sup_ty.superset_of(sub_ty))),
             (Scalar::Or(variants), _) => variants.iter().any(|ty| ty.scalar.superset_of(sub)),
             (a, b) => discriminant(a) == discriminant(b),
         }
