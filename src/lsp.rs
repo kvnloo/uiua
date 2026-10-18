@@ -620,6 +620,7 @@ impl Spanner {
                     }
                     spans.push(word.span.clone().sp(SpanKind::Number))
                 }
+                Word::BasedInt(_) => spans.push(word.span.clone().sp(SpanKind::Number)),
                 Word::Char(_) | Word::String(_) | Word::FormatString(_) => {
                     spans.push(word.span.clone().sp(SpanKind::String))
                 }
@@ -841,6 +842,7 @@ impl Spanner {
                     }
                     spans.push(mac.ident.span.clone().sp(mac_delim_kind));
                 }
+                Word::Underscore => spans.push(word.span.clone().sp(SpanKind::Strand)),
             }
         }
         spans.retain(|sp| !sp.span.as_str(self.inputs(), str::is_empty));

@@ -2,13 +2,14 @@
 
 # 0.20
 
-- `uiua shell`
-- Non-decimal numeric literals
 - `switch` subscripts
 - `fold` subscripts
-- Useful behavior for noadic functions in `rows`, `inventory`, `table`, and `stencil`
-- Chained access rework
 - Document array summary notation
+- Maybe:
+  - Special glyph for labels
+  - Syntax-aware strings/format strings
+  - `uiua shell`
+  - Useful behavior for noadic functions in `rows`, `inventory`, `table`, and `stencil`
 
 # 1.0 - 202?-??-??
 

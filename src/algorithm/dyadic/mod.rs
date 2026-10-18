@@ -4,7 +4,6 @@ mod combine;
 mod search;
 mod structure;
 
-use core::f64;
 use std::{
     borrow::Cow,
     cmp::Ordering,
@@ -613,6 +612,8 @@ impl Value {
                 |a, b| a.undo_keep(&counts, b, env).map(Into::into),
                 |a, b| a.undo_keep(&counts, b, env).map(Into::into),
                 |a, b| a.undo_keep(&counts, b, env).map(Into::into),
+                |a, b| a.undo_keep(&counts, b, env).map(Into::into),
+                #[cfg(feature = "ga")]
                 |a, b| a.undo_keep(&counts, b, env).map(Into::into),
                 |a, b| {
                     env.error(format!(
@@ -1562,6 +1563,8 @@ impl Value {
             |a, b| a.undo_anti_orient(undices.clone(), b, env).map(Into::into),
             |a, b| a.undo_anti_orient(undices.clone(), b, env).map(Into::into),
             |a, b| a.undo_anti_orient(undices.clone(), b, env).map(Into::into),
+            |a, b| a.undo_anti_orient(undices.clone(), b, env).map(Into::into),
+            #[cfg(feature = "ga")]
             |a, b| a.undo_anti_orient(undices.clone(), b, env).map(Into::into),
             |a, b| {
                 env.error(format!(
