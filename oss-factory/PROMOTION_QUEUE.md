@@ -12,6 +12,7 @@
 | [#4](https://github.com/kvnloo/uiua/pull/4) | [uiua PR #1036](https://github.com/uiua-lang/uiua/pull/1036), original author **@amatgil** | `A (n×n) \ B (n×m)`: fix RHS stride, number of columns, and output shape; 2 Rust tests for n×3 and n×1 RHS. Independent NumPy expectations verified; Rust tests pending. |
 | [#5](https://github.com/kvnloo/uiua/pull/5) | [uiua PR #1037](https://github.com/uiua-lang/uiua/pull/1037), original author **@ndren** | Fall back to Euclidean remainder when FMA yields a negative/out-of-range/nonfinite result for a positive base; 1 Rust regression test. Independent libm reproduction; Rust tests and benchmark pending. |
 | [#6](https://github.com/kvnloo/uiua/pull/6) | [uiua PR #1031](https://github.com/uiua-lang/uiua/pull/1031), original author **@Dguto9** | RHS union operand order, transactional union-arm validation, subtype inclusion and dynamic-shape reflexivity; 4 Rust regression tests. Rust tests pending; upstream is a draft. |
+| [#8](https://github.com/kvnloo/uiua/pull/8) | [uiua #635](https://github.com/uiua-lang/uiua/issues/635) | Types tutorial explains IEEE-754 f64 exact integer range and 64-bit bit-vector conversion loss; docs-only. Site build pending. |
 
 **Evidence & environment:** no `rustc`/`cargo` in this execution environment; GitHub Actions on `kvnloo/uiua` returned zero workflow runs (as checked). Do not call these Rust-test-verified or merge-ready. The PRs preserve the original contributors' head commits and authorship. The fork main remains synced to upstream; all changes are on separate branches.
 
@@ -50,7 +51,7 @@
 | [#708](https://github.com/uiua-lang/uiua/issues/708) | P2: binary-search/bisection primitive; interval-tree use case provided. Reuse #709 benchmark, establish sortedness/insertion-bound semantics before new primitive. |
 | [#668](https://github.com/uiua-lang/uiua/issues/668) | P1, addressed downstream in [fork PR #3](https://github.com/kvnloo/uiua/pull/3): document that web GitHub imports always fetch `main` and do not accept branch/commit specifiers. |
 | [#648](https://github.com/uiua-lang/uiua/issues/648) | P3: unsafe-removal policy; maintainer values performance and does not aim for zero `unsafe`, but may accept targeted `bytemuck` conversions. No blanket rewrites. |
-| [#635](https://github.com/uiua-lang/uiua/issues/635) | P2: bit conversion beyond f64 53-bit integer precision; precision-loss warning/docs or explicit arbitrary-precision type design, not a silent cast patch. |
+| [#635](https://github.com/uiua-lang/uiua/issues/635) | P2: bit conversion beyond f64 53-bit integer precision. Downstream [fork PR #8](https://github.com/kvnloo/uiua/pull/8) documents exact-integer limits; arbitrary precision needs separate design, not a silent cast patch. |
 | [#612](https://github.com/uiua-lang/uiua/issues/612) | P3 UX: file sharing between pad instances was called intentional by maintainer. Improve explicit visibility/controls, not silent isolation. |
 | [#575](https://github.com/uiua-lang/uiua/issues/575) | P3: reduce-on-multiple-axes syntax has alternative proposals from maintainer; seek design decision before primitive grammar changes. |
 | [#569](https://github.com/uiua-lang/uiua/issues/569) | P2 docs: inverse documentation partly addressed in commit `20cfc189`; find concrete remaining under-documented inverses, avoid duplicating existing examples. |
