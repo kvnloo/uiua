@@ -1914,8 +1914,15 @@ impl<T: RealArrayValue + GridFmt> Array<T> {
                 let sign = if n < 0.0 { -1.0 } else { 1.0 };
                 for j in 0..max_row_len {
                     let base_count = (abs_n / base).floor();
-                    // slice[i * max_row_len + j] = (abs_n - base_count * base) * sign;
-                    slice[i * max_row_len + j] = base_count.mul_add(-base, abs_n) * sign;
+                    let rem = base_count.mul_add(-base, abs_n);
+                    // A rounded quotient can yield a negative or out-of-range FMA
+                    // remainder near multiples of fractional bases.
+                    let rem = if rem.is_finite() && rem >= 0.0 && rem < base {
+                        rem
+                    } else {
+                        abs_n.rem_euclid(base)
+                    };
+                    slice[i * max_row_len + j] = rem * sign;
                     abs_n = base_count;
                 }
             }
