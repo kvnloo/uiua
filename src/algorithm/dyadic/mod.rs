@@ -2501,3 +2501,29 @@ impl Value {
         Ok((num, denom))
     }
 }
+
+#[cfg(test)]
+mod matrix_div_regression_tests {
+    use super::*;
+
+    #[test]
+    fn rectangular_rhs_preserves_shape_and_pivoted_rows() {
+        let env = Uiua::with_safe_sys();
+        // A = [[0, 1], [1, 0]]: LU must pivot and swap the RHS rows.
+        let divisor = Array::new([2, 2], eco_vec![0.0, 1.0, 1.0, 0.0]);
+        let rhs = Array::new([2, 3], eco_vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        let result = rhs.matrix_div(&divisor, &env).unwrap();
+        assert_eq!(result.shape.as_slice(), &[2, 3]);
+        assert_eq!(result.data.as_slice(), &[4.0, 5.0, 6.0, 1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn single_rhs_column_is_not_indexed_as_square() {
+        let env = Uiua::with_safe_sys();
+        let identity = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 1], eco_vec![7.0, 9.0]);
+        let result = rhs.matrix_div(&identity, &env).unwrap();
+        assert_eq!(result.shape.as_slice(), &[2, 1]);
+        assert_eq!(result.data.as_slice(), &[7.0, 9.0]);
+    }
+}
