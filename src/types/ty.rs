@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, Hash)]
 #[doc(hidden)]
 pub struct Type {
     pub scalar: Scalar,
@@ -33,7 +33,14 @@ impl Type {
             && arr.rank() == 1
             && let Some((first, rest)) = arr.data.split_first()
         {
-            let mut scalar = value_as_scalar_spec(&first.0)?;
+            let Some(mut scalar) = value_as_scalar_spec(&first.0) else {
+                {
+                    let variants = (rest.iter())
+                        .map(|Boxed(val)| Type::from_spec(val))
+                        .collect::<Option<Vec<_>>>()?;
+                    return Some(Scalar::Or(variants).any_shape());
+                }
+            };
             if let [Boxed(arr)] = rest
                 && arr.type_id() == f64::TYPE_ID
                 && arr.shape == [0]
@@ -240,6 +247,7 @@ impl Type {
                 Scalar::Box(ScalarBox::All(ty)) => [Boxed((*ty).spec_val())].into(),
                 Scalar::Box(ScalarBox::Any) => '□'.into(),
                 Scalar::Box(ScalarBox::Def(..)) => unreachable!(),
+                Scalar::Or(_) => unreachable!(),
             }
         }
         if let Scalar::Box(ScalarBox::Def(name, fields)) = self.scalar {
@@ -248,10 +256,15 @@ impl Type {
                 val.meta.label = Some(name);
             }
             val
+        } else if let Scalar::Or(variants) = self.scalar {
+            std::iter::once('?'.into())
+                .chain(variants.into_iter().map(Type::spec_val))
+                .map(Boxed)
+                .collect()
         } else if self.shape.is_scalar() {
-            scalar_to_val(self.scalar)
-        } else if self.shape.is_any() {
             [Boxed(scalar_to_val(self.scalar))].into()
+        } else if self.shape.is_any() {
+            scalar_to_val(self.scalar)
         } else {
             let mut items = eco_vec![Boxed(scalar_to_val(self.scalar))];
             for dim in self.shape.dims {
@@ -261,6 +274,21 @@ impl Type {
                 }));
             }
             items.into()
+        }
+    }
+    pub fn superset_of(&self, other: &Type) -> bool {
+        if !self.shape.superset_of(&other.shape) {
+            return false;
+        }
+        // Each Or arm carries a full type, including shape; comparing
+        // scalar kinds alone incorrectly accepts vectors in scalar unions.
+        match (&self.scalar, &other.scalar) {
+            (Scalar::Or(sup), Scalar::Or(sub)) => sub
+                .iter()
+                .all(|s| sup.iter().any(|candidate| candidate.superset_of(s))),
+            (Scalar::Or(sup), _) => sup.iter().any(|s| s.superset_of(other)),
+            (_, Scalar::Or(sub)) => sub.iter().all(|s| self.superset_of(s)),
+            _ => self.scalar.superset_of(&other.scalar),
         }
     }
 }
@@ -332,5 +360,25 @@ impl fmt::Display for Type {
         } else {
             write!(f, "{}{}", self.shape, self.scalar)
         }
+    }
+}
+
+#[cfg(test)]
+mod union_type_inclusion_regression_tests {
+    use super::*;
+
+    #[test]
+    fn union_of_scalar_types_does_not_accept_vector_shape() {
+        let scalar_only = Scalar::Or(vec![Scalar::Num.scalar_type()]).any_shape();
+        assert!(scalar_only.superset_of(&Scalar::Num.scalar_type()));
+        assert!(!scalar_only.superset_of(&Scalar::Num.shaped([3])));
+    }
+
+    #[test]
+    fn union_members_are_compared_by_full_subtyping() {
+        let broad = Scalar::Or(vec![Scalar::Num.shaped([3])]).any_shape();
+        let narrow = Scalar::Or(vec![Scalar::Nat.shaped([3])]).any_shape();
+        assert!(broad.superset_of(&narrow));
+        assert!(!narrow.superset_of(&broad));
     }
 }

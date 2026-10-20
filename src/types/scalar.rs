@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::*;
 
 #[doc(hidden)]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, Hash)]
 pub enum ScalarBox {
     #[default]
     Any,
@@ -28,7 +28,7 @@ impl ScalarBox {
 }
 
 #[doc(hidden)]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize, Hash)]
 pub enum Scalar {
     Bool,
     Nat,
@@ -41,6 +41,7 @@ pub enum Scalar {
     Char,
     Stream,
     Box(ScalarBox),
+    Or(Vec<Type>),
     #[default]
     Any,
 }
@@ -83,6 +84,11 @@ impl Scalar {
             (Scalar::Int, Scalar::Nat | Scalar::Bool) => true,
             (Scalar::Nat, Scalar::Bool) => true,
             (Scalar::Char, Scalar::Ascii) => true,
+            (Scalar::Or(slf_variants), Scalar::Or(sub_variants)) => sub_variants
+                .iter()
+                .all(|sub_ty| slf_variants.iter().any(|sup_ty| sup_ty.superset_of(sub_ty))),
+            (Scalar::Or(variants), _) => variants.iter().any(|ty| ty.scalar.superset_of(sub)),
+            (_, Scalar::Or(variants)) => variants.iter().all(|ty| self.superset_of(&ty.scalar)),
             (a, b) => discriminant(a) == discriminant(b),
         }
     }
@@ -199,6 +205,7 @@ impl fmt::Debug for Scalar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Box(ScalarBox::Def(..)) => write!(f, "{self}"),
+            Scalar::Or(_) => write!(f, "{self}"),
             _ => write!(f, "array of {self}"),
         }
     }
@@ -227,10 +234,48 @@ impl fmt::Display for Scalar {
                 }
                 write!(f, "}}")
             }
+            Scalar::Or(variants) => {
+                write!(f, "(")?;
+                for (i, variant) in variants.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, "|")?;
+                    }
+                    write!(f, "{variant}")?;
+                }
+                write!(f, ")")
+            }
             Scalar::Complex => write!(f, "ℂ"),
             Scalar::Stream => write!(f, "stream"),
             #[cfg(feature = "ga")]
             Scalar::Multivector => write!(f, "𝕍"),
         }
+    }
+}
+
+#[cfg(test)]
+mod union_scalar_regression_tests {
+    use super::*;
+
+    #[test]
+    fn union_inclusion_respects_numeric_subtypes() {
+        let broad = Scalar::Or(vec![Scalar::Num.scalar_type()]);
+        let narrow = Scalar::Or(vec![Scalar::Nat.scalar_type()]);
+        assert!(broad.superset_of(&narrow));
+        assert!(!narrow.superset_of(&broad));
+    }
+
+    #[test]
+    fn union_inclusion_covers_nested_numeric_arms() {
+        let broad = Scalar::Or(vec![Scalar::Num.scalar_type()]);
+        let nested = Scalar::Or(vec![
+            Scalar::Or(vec![Scalar::Nat.scalar_type(), Scalar::Int.scalar_type()]).scalar_type(),
+        ]);
+        assert!(broad.superset_of(&nested));
+        assert!(Scalar::Num.superset_of(&nested));
+        assert!(!nested.superset_of(&broad));
+
+        let mixed = Scalar::Or(vec![Scalar::Nat.scalar_type(), Scalar::Char.scalar_type()]);
+        assert!(!broad.superset_of(&mixed));
+        assert!(!Scalar::Num.superset_of(&mixed));
     }
 }
