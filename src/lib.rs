@@ -299,6 +299,70 @@ mod tests {
 
     #[test]
     #[cfg(feature = "native_sys")]
+    fn fetch_http_roundtrip() {
+        use std::{
+            io::{Read, Write},
+            net::TcpListener,
+            thread,
+            time::{Duration, Instant},
+        };
+
+        use crate::{NativeSys, SysBackend};
+
+        const BODY: [u8; 5] = [0, 255, b'\r', b'\n', 42];
+        for scheme in ["http", "hTtP"] {
+            let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let address = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let deadline = Instant::now() + Duration::from_secs(5);
+                let (mut stream, _) = loop {
+                    match listener.accept() {
+                        Ok(connection) => break connection,
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            assert!(Instant::now() < deadline, "fetch never connected");
+                            thread::sleep(Duration::from_millis(10));
+                        }
+                        Err(error) => panic!("accept failed: {error}"),
+                    }
+                };
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                stream
+                    .set_write_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut request = [0; 8192];
+                let mut length = 0;
+                loop {
+                    let count = stream.read(&mut request[length..]).unwrap();
+                    assert!(count > 0, "incomplete HTTP request");
+                    length += count;
+                    if request[..length].windows(4).any(|w| w == b"\r\n\r\n") {
+                        break;
+                    }
+                    assert!(length < request.len(), "oversized HTTP request");
+                }
+                let request = std::str::from_utf8(&request[..length]).unwrap();
+                assert!(request.starts_with("GET /CaseSensitive?x=1 HTTP/1.1\r\n"));
+                let host = format!("Host: {address}");
+                assert!(request.lines().any(|line| line == host));
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    BODY.len()
+                )
+                .unwrap();
+                stream.write_all(&BODY).unwrap();
+            });
+            let result = NativeSys.fetch(&format!("{scheme}://{address}/CaseSensitive?x=1"));
+            server.join().unwrap();
+            assert_eq!(result.unwrap(), BODY);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "native_sys")]
     fn error_dont_crash() {
         use super::*;
         let path = Path::new("tests_special/error.ua");
