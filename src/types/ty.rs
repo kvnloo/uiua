@@ -249,9 +249,9 @@ impl Type {
             }
             val
         } else if self.shape.is_scalar() {
-            scalar_to_val(self.scalar)
-        } else if self.shape.is_any() {
             [Boxed(scalar_to_val(self.scalar))].into()
+        } else if self.shape.is_any() {
+            scalar_to_val(self.scalar)
         } else {
             let mut items = eco_vec![Boxed(scalar_to_val(self.scalar))];
             for dim in self.shape.dims {
@@ -331,6 +331,27 @@ impl fmt::Display for Type {
             Ok(())
         } else {
             write!(f, "{}{}", self.shape, self.scalar)
+        }
+    }
+}
+
+#[cfg(test)]
+mod type_spec_roundtrip_regression_tests {
+    use super::*;
+
+    #[test]
+    fn scalar_any_shape_and_fixed_dims_roundtrip() {
+        for ty in [
+            Scalar::Num.scalar_type(),
+            Scalar::Num.any_shape(),
+            Scalar::Num.shaped([2, 3]),
+            Scalar::Num.shaped([0, 3]),
+            Scalar::Num.shaped([Dim::Dyn, Dim::Static(3)]),
+            Scalar::Char.shaped([4]),
+        ] {
+            let encoded = ty.clone().spec_val();
+            let decoded = Type::from_spec(&encoded);
+            assert_eq!(decoded, Some(ty));
         }
     }
 }
