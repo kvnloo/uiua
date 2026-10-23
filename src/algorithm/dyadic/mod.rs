@@ -1496,6 +1496,7 @@ impl Array<f64> {
         }
         Ok(Array::new(result_shape, result_data))
     }
+    /// Matrix *left* division (solves AX = B)
     pub(crate) fn matrix_div(&self, other: &Self, env: &Uiua) -> UiuaResult<Self> {
         let (a, b) = (other, self);
         if a.rank() != 2 || b.rank() != 2 {
@@ -1505,15 +1506,126 @@ impl Array<f64> {
                 a.shape, b.shape
             )));
         }
-        if [a.shape[0], a.shape[1]] != [b.shape[1], b.shape[0]] {
+        if a.shape[0] != a.shape[1] {
+            return Err(env.error(format!(
+                "Matrix division require a square matrix of compatible shapes, \
+                but one the divisor is non-square ({})",
+                a.shape
+            )));
+        }
+        if a.shape[0] != b.shape[0] {
             return Err(env.error(format!(
                 "Matrix division requires arrays of compatible shapes, \
                 but their shapes are {} and {}",
                 a.shape, b.shape
             )));
         }
-        // let mut result_data = eco_vec![0.0; a.element_count().max(b.element_count())];
-        Err(env.error("Matrix division is not yet implemented"))
+
+        if a.data.iter().chain(b.data.iter()).any(|v| !v.is_finite()) {
+            return Err(env.error("Matrix division requires finite entries"));
+        }
+
+        let n = a.shape[0];
+        let rhs_cols = b.shape[1];
+        let idx = |r, c| r * n + c;
+        let rhs_idx = |r, c| r * rhs_cols + c;
+
+        /// Returns L (nxn) and P (n), 'a' is modified into U
+        fn lu_decomp(a: &mut [f64], n: usize, env: &Uiua) -> UiuaResult<(Vec<f64>, Vec<usize>)> {
+            let idx = |r, c| r * n + c;
+            let mut perm = (0..n).collect::<Vec<_>>();
+            let mut lower = vec![0.0; n * n];
+            for i in 0..n {
+                lower[idx(i, i)] = 1.0;
+            }
+
+            // yoinked from my matlab uni notes
+            for i in 0..n {
+                let pivot = {
+                    let mut max = a[idx(i, i)];
+                    let mut maxidx = i;
+                    for row in i + 1..n {
+                        let val = a[idx(row, i)];
+                        if val.abs() > max.abs() {
+                            (max, maxidx) = (val, row);
+                        }
+                    }
+                    maxidx
+                };
+
+                perm.swap(pivot, i);
+                for j in 0..i {
+                    lower.swap(idx(i, j), idx(pivot, j));
+                }
+                for j in i..n {
+                    a.swap(idx(i, j), idx(pivot, j));
+                }
+
+                // this check is very Not Ideal, but i can't
+                // think of anything better
+                // An absolute EPSILON cutoff incorrectly rejects well-scaled,
+                // invertible matrices (for example 1e-20 times the identity).
+                if a[idx(i, i)] == 0.0 {
+                    return Err(env.error(
+                        "Matrix divisor is numerically singular (the matrix inversion failed)",
+                    ));
+                }
+                for j in i + 1..n {
+                    let mult = a[idx(j, i)] / a[idx(i, i)];
+                    lower[idx(j, i)] = mult;
+                    for col in i..n {
+                        a[idx(j, col)] -= mult * a[idx(i, col)];
+                    }
+                }
+            }
+
+            Ok((lower, perm))
+        }
+
+        // AX = B
+        //   PA = LU
+        // LUX = PB
+        // X = U⁻¹L⁻¹PB
+        let (l, u, p) = {
+            let mut a = EcoVec::from(a.data.as_slice());
+            let (l, p) = lu_decomp(a.make_mut(), n, env)?;
+            (l, a, p)
+        };
+
+        let mut x = EcoVec::from(b.data.as_slice());
+
+        // P * ·
+        let old = x.clone();
+
+        for i in 0..n {
+            for k in 0..rhs_cols {
+                x.make_mut()[rhs_idx(i, k)] = old[rhs_idx(p[i], k)];
+            }
+        }
+
+        // L⁻¹ * · (forward subst)
+        for i in 0..n {
+            for k in 0..rhs_cols {
+                let mut s = x[rhs_idx(i, k)];
+                for j in 0..i {
+                    s -= l[idx(i, j)] * x[rhs_idx(j, k)];
+                }
+                x.make_mut()[rhs_idx(i, k)] = s / l[idx(i, i)];
+            }
+        }
+
+        // U⁻¹ * · (back subst)
+        for i in (0..n).rev() {
+            for k in 0..rhs_cols {
+                let mut s = x[rhs_idx(i, k)];
+                for j in (i + 1)..n {
+                    s -= u[idx(i, j)] * x[rhs_idx(j, k)];
+                }
+                x.make_mut()[rhs_idx(i, k)] = s / u[idx(i, i)];
+            }
+        }
+
+        Ok(Array::new(b.shape.clone(), x))
     }
 }
 
@@ -2393,5 +2505,179 @@ impl Value {
         denom.meta.take_sorted_flags();
         denom.validate();
         Ok((num, denom))
+    }
+}
+
+#[cfg(test)]
+mod matrix_div_regression_tests {
+    use super::*;
+
+    fn assert_solves(divisor: &Array<f64>, rhs: &Array<f64>, expected: &[f64]) {
+        let result = rhs.matrix_div(divisor, &Uiua::with_safe_sys()).unwrap();
+        assert_eq!(result.shape, rhs.shape);
+        assert_eq!(result.data.len(), expected.len());
+        for (&actual, &expected) in result.data.iter().zip(expected) {
+            assert!((actual - expected).abs() <= 1e-8 * expected.abs().max(1.0));
+        }
+        // Independently reconstruct A X, rather than relying on matrix_mul or
+        // the solver's indexing helpers as the oracle.
+        let columns = rhs.shape[1];
+        for row in 0..divisor.shape[0] {
+            for column in 0..columns {
+                let actual: f64 = (0..divisor.shape[1])
+                    .map(|k| {
+                        divisor.data[row * divisor.shape[1] + k] * result.data[k * columns + column]
+                    })
+                    .sum();
+                let expected = rhs.data[row * columns + column];
+                assert!((actual - expected).abs() <= 1e-8 * expected.abs().max(1.0));
+            }
+        }
+    }
+
+    #[test]
+    fn multiple_rhs_columns_survive_later_pivot_with_nontrivial_lower_factor() {
+        let divisor = Array::new(
+            [3, 3],
+            eco_vec![4.0, 1.0, 0.0, 2.0, 0.0, 1.0, 1.0, 3.0, 1.0],
+        );
+        let rhs = Array::new(
+            [3, 4],
+            eco_vec![
+                6.0, 7.0, 12.0, 19.0, 1.0, 8.0, 8.0, 8.0, 6.0, 3.0, 5.0, 13.0
+            ],
+        );
+        assert_solves(
+            &divisor,
+            &rhs,
+            &[1.0, 2.0, 3.0, 4.0, 2.0, -1.0, 0.0, 3.0, -1.0, 4.0, 2.0, 0.0],
+        );
+    }
+
+    #[test]
+    fn near_singular_system_is_consistent_across_uniform_scaling() {
+        let delta = 2.0_f64.powi(-40);
+        for scale in [1e-20, 1.0, 1e20] {
+            let divisor = Array::new([2, 2], eco_vec![scale, scale, scale, (1.0 + delta) * scale]);
+            // X = [1, 1] avoids introducing an unrelated ill-conditioned
+            // rounding error while still requiring a small second pivot.
+            let rhs = Array::new([2, 1], eco_vec![2.0 * scale, (2.0 + delta) * scale]);
+            let result = rhs.matrix_div(&divisor, &Uiua::with_safe_sys()).unwrap();
+            assert_eq!(&result.shape[..], &[2, 1]);
+            for &value in result.data.iter() {
+                assert!((value - 1.0).abs() < 0.001);
+            }
+        }
+    }
+
+    #[test]
+    fn singular_and_rank_deficient_divisors_are_errors() {
+        let rhs = Array::new([2, 1], eco_vec![1.0, 2.0]);
+        for values in [
+            eco_vec![0.0, 0.0, 0.0, 0.0],
+            eco_vec![1.0, 2.0, 2.0, 4.0],
+            eco_vec![0.0, 1.0, 0.0, 2.0],
+        ] {
+            let divisor = Array::new([2, 2], values);
+            assert!(rhs.matrix_div(&divisor, &Uiua::with_safe_sys()).is_err());
+        }
+    }
+
+    #[test]
+    fn invalid_ranks_and_incompatible_shapes_are_errors() {
+        let env = Uiua::with_safe_sys();
+        let identity = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 1], eco_vec![1.0, 2.0]);
+        for invalid in [
+            Array::new([], eco_vec![1.0]),
+            Array::new([2], eco_vec![1.0, 2.0]),
+            Array::new([1, 2, 1], eco_vec![1.0, 2.0]),
+        ] {
+            assert!(invalid.matrix_div(&identity, &env).is_err());
+            assert!(rhs.matrix_div(&invalid, &env).is_err());
+        }
+        let nonsquare = Array::new([2, 3], eco_vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0]);
+        assert!(rhs.matrix_div(&nonsquare, &env).is_err());
+        let wrong_rows = Array::new([1, 3], eco_vec![1.0, 2.0, 3.0]);
+        assert!(wrong_rows.matrix_div(&identity, &env).is_err());
+        let empty_rows = Array::new([0, 3], EcoVec::<f64>::new());
+        assert!(empty_rows.matrix_div(&identity, &env).is_err());
+    }
+
+    #[test]
+    fn empty_square_divisor_preserves_empty_rhs_shape() {
+        let divisor = Array::new([0, 0], EcoVec::<f64>::new());
+        for columns in [0, 1, 3] {
+            let rhs = Array::new([0, columns], EcoVec::<f64>::new());
+            assert_solves(&divisor, &rhs, &[]);
+        }
+    }
+
+    #[test]
+    fn one_by_one_divisor_supports_multiple_rhs_columns() {
+        let divisor = Array::new([1, 1], eco_vec![-2.0]);
+        let rhs = Array::new([1, 3], eco_vec![4.0, 0.0, -6.0]);
+        assert_solves(&divisor, &rhs, &[-2.0, 0.0, 3.0]);
+    }
+
+    #[test]
+    fn nonfinite_entries_in_either_operand_are_errors() {
+        let env = Uiua::with_safe_sys();
+        let identity = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 1], eco_vec![1.0, 2.0]);
+        for nonfinite in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for position in 0..4 {
+                let mut divisor = identity.clone();
+                divisor.data.as_mut_slice()[position] = nonfinite;
+                assert!(rhs.matrix_div(&divisor, &env).is_err());
+            }
+            for position in 0..2 {
+                let mut invalid_rhs = rhs.clone();
+                invalid_rhs.data.as_mut_slice()[position] = nonfinite;
+                assert!(invalid_rhs.matrix_div(&identity, &env).is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn rectangular_rhs_preserves_shape_and_pivoted_rows() {
+        let env = Uiua::with_safe_sys();
+        // A = [[0, 1], [1, 0]]: LU must pivot and swap the RHS rows.
+        let divisor = Array::new([2, 2], eco_vec![0.0, 1.0, 1.0, 0.0]);
+        let rhs = Array::new([2, 3], eco_vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        let result = rhs.matrix_div(&divisor, &env).unwrap();
+        assert_eq!(&result.shape[..], &[2, 3]);
+        assert_eq!(result.data.as_slice(), &[4.0, 5.0, 6.0, 1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn scaled_identity_remains_invertible() {
+        let env = Uiua::with_safe_sys();
+        let divisor = Array::new([2, 2], eco_vec![1e-20, 0.0, 0.0, 2e-20]);
+        let rhs = Array::new([2, 1], eco_vec![3e-20, 8e-20]);
+        let result = rhs.matrix_div(&divisor, &env).unwrap();
+        assert_eq!(&result.shape[..], &[2, 1]);
+        assert!((result.data[0] - 3.0).abs() < 1e-12);
+        assert!((result.data[1] - 4.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn zero_column_rhs_is_preserved() {
+        let env = Uiua::with_safe_sys();
+        let divisor = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 0], EcoVec::<f64>::new());
+        let result = rhs.matrix_div(&divisor, &env).unwrap();
+        assert_eq!(&result.shape[..], &[2, 0]);
+        assert!(result.data.is_empty());
+    }
+
+    #[test]
+    fn single_rhs_column_is_not_indexed_as_square() {
+        let env = Uiua::with_safe_sys();
+        let identity = Array::new([2, 2], eco_vec![1.0, 0.0, 0.0, 1.0]);
+        let rhs = Array::new([2, 1], eco_vec![7.0, 9.0]);
+        let result = rhs.matrix_div(&identity, &env).unwrap();
+        assert_eq!(&result.shape[..], &[2, 1]);
+        assert_eq!(result.data.as_slice(), &[7.0, 9.0]);
     }
 }
