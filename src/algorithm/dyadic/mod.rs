@@ -1913,8 +1913,17 @@ impl<T: RealArrayValue + GridFmt> Array<T> {
                 let mut abs_n = n.abs();
                 let sign = if n < 0.0 { -1.0 } else { 1.0 };
                 for j in 0..max_row_len {
-                    slice[i * max_row_len + j] = abs_n.rem_euclid(base) * sign;
-                    abs_n = abs_n.div_euclid(base);
+                    let base_count = (abs_n / base).floor();
+                    let rem = base_count.mul_add(-base, abs_n);
+                    // A rounded quotient can yield a negative or out-of-range FMA
+                    // remainder near multiples of fractional bases.
+                    let rem = if rem.is_finite() && rem >= 0.0 && rem < base {
+                        rem
+                    } else {
+                        abs_n.rem_euclid(base)
+                    };
+                    slice[i * max_row_len + j] = rem * sign;
+                    abs_n = base_count;
                 }
             }
             Array::new(new_shape, new_data)
@@ -2393,5 +2402,44 @@ impl Value {
         denom.meta.take_sorted_flags();
         denom.validate();
         Ok((num, denom))
+    }
+}
+
+#[cfg(test)]
+mod fma_base_regression_tests {
+    use super::*;
+
+    #[test]
+    fn optimized_digits_match_euclidean_reference() {
+        let env = Uiua::with_safe_sys();
+        for (n, base) in [
+            (11.0_f64, 1.1_f64),
+            (-11.0, 1.1),
+            (1237.0, 2.7),
+            (1001.0, 10.0),
+            (145.0, 12.0),
+            (0.0, 2.0),
+        ] {
+            let input = Array::new([], eco_vec![n]);
+            let digits = input.base_scalar(base, &env).unwrap();
+            let mut abs_n = n.abs();
+            let sign = if n < 0.0 { -1.0 } else { 1.0 };
+            for &digit in digits.data.iter() {
+                let expected = abs_n.rem_euclid(base) * sign;
+                assert_eq!(digit, expected, "base={base} n={n}");
+                abs_n = abs_n.div_euclid(base);
+            }
+        }
+    }
+
+    #[test]
+    fn positive_fractional_base_digits_stay_in_range() {
+        let env = Uiua::with_safe_sys();
+        let input = Array::new([], eco_vec![11.0]);
+        let digits = input.base_scalar(1.1, &env).unwrap();
+        assert!(
+            digits.data.iter().all(|d| (0.0..1.1).contains(d)),
+            "positive-base digits must be in [0, base)"
+        );
     }
 }
