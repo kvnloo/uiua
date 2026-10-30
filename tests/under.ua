@@ -557,3 +557,22 @@ H ← "Hello,   world!!"
 
 # Sided under
 ⍤⤙≍ [0.25 ¯1] [⍜⌟¯°+ ¯1.25]
+
+# Under under w/ nested context
+⍤⤙≍ "Ello" ⍜⍜⊢(¯⌵)(↘1) "Hello"
+⍤⤙≍ ["359" "WNS" "1E7"] ⍜⍜♭⍆⍉ ["7N9" "W5E" "1S3"]
+⍤⤙≍ ⟜⍜⍜◴⍆∘ "Mints and cola!"
+⍤⤙≍ "acborrw" ⍜⍜(↙4)⍆⍆ "crowbar"
+$ baboon
+$ Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo
+$ Never gonna give you up
+$ ⍤⤙≍ ⍚⊃⍜⍜◴⊛⇌⍜⊛⇌ °/$"_\n_" 
+⍤⤙≍ ⍚⊃⍜⍜◴⊛⇌⍜⊛⇌ °/$"_\n_" 
+
+# Nested under errors must not corrupt the context of subsequent calls.
+◌⍣(⍜⍜⊢(¯⌵)(↘1))⋅∘ []
+⍤⤙≍ "Ello" ⍜⍜⊢(¯⌵)(↘1) "Hello"
+◌⍣(⍜⍜⊢(¯⌵)⋕)⋅∘ "Hello"
+⍤⤙≍ "Ello" ⍜⍜⊢(¯⌵)(↘1) "Hello"
+◌⍣(⍜⍜(⊏0_1)⌵(↘3))⋅∘ 1_2_3
+⍤⤙≍ 1_2_3 ⍜⍜(⊏0_1)⌵∘ 1_2_3
