@@ -12,6 +12,8 @@ There are four types of arrays:
 
 Numbers are decimal numbers with floating precision. They use the IEEE-754 double-precision floating-point format.
 
+This format represents every integer from `-2^53` to `2^53` exactly, but not every integer outside that range. In particular, converting a long bit vector to a single number and back may lose bits: the integer `2^64 - 1`, for example, rounds to `2^64` as a double-precision number. Keep values as arrays of bits when every bit must be preserved.
+
 ```uiua
 [5 6e3 e 0 3.2 3/4 ¯1.1 π ∞ 3π/2]
 ```
