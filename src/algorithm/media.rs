@@ -2248,3 +2248,31 @@ impl Value {
         Ok(Array::new(shape, data))
     }
 }
+
+#[cfg(all(test, feature = "font_shaping", feature = "native_sys"))]
+mod font_shaping_upgrade_smoke {
+    use super::*;
+
+    #[test]
+    fn ascii_and_multiline_text_render_nonempty_grayscale_pixels() {
+        // Check the real Uiua cosmic-text integration, not only dependency
+        // resolution. Pixel-perfect font output is intentionally not pinned.
+        let mut env = Uiua::with_native_sys();
+        let single = layout_text(18.0.into(), "Hello!".into(), None, &mut env).unwrap();
+        let multi = layout_text(18.0.into(), "Hello!\nWorld!".into(), None, &mut env).unwrap();
+
+        let Value::Num(single) = single else {
+            panic!("Default text layout should produce a numeric grayscale array");
+        };
+        let Value::Num(multi) = multi else {
+            panic!("Default text layout should produce a numeric grayscale array");
+        };
+
+        assert_eq!(single.rank(), 2);
+        assert_eq!(multi.rank(), 2);
+        assert!(single.shape[0] > 0 && single.shape[1] > 0);
+        assert!(single.data.iter().any(|&pixel| pixel > 0.0));
+        assert!(multi.shape[0] > single.shape[0]);
+        assert!(multi.data.iter().any(|&pixel| pixel > 0.0));
+    }
+}
